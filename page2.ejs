@@ -8,5 +8,11 @@
 <body>
     <h1>Hello <%= query.name %>!</h1>
     <p>Your number is <%= integ %> and your ID is <%= query.id %>.</p>
+
+    <form id="dataForm" action="/send-id" method="POST">
+        <label for="inputId">Enter your ID:</label>
+        <input type="text" id="inputId" name="id" required>
+        <button type="submit">Send ID</button>
+    </form>
 </body>
 </html>

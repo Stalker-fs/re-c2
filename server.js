@@ -1,8 +1,9 @@
-const http = require('http');
+const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const ejs = require('ejs');
-const net = require('net');
+// const net = require('net');
+const tls = require('tls');
 
 let integ;
 let so_id;
@@ -10,6 +11,10 @@ let so_id;
 const WEB_PORT = 3000;
 const C2_PORT = 3001;
 
+const options = {
+    key: fs.readFileSync('privatekey.pem'),
+    cert: fs.readFileSync('certificate.pem'),
+};
 for (let i = 1; i <= 100; i++) {
     setTimeout(() => {
         integ = i;
@@ -18,7 +23,7 @@ for (let i = 1; i <= 100; i++) {
 }
 
 // Створення сервера
-const server = http.createServer((req, res) => {
+const server = https.createServer(options, (req, res) => {
     const parsedUrl = url.parse(req.url, true);
     const path = parsedUrl.pathname;
     const query = parsedUrl.query;
@@ -53,11 +58,36 @@ const server = http.createServer((req, res) => {
             }
             break;
         case 'POST':
+            let body = '';
+            req.on('data', ch => {
+                body += ch.toString();
+            });
+            switch(path){
+                case '/send-id':
+                    req.on('end', () => {
+                        const params = new URLSearchParams(body);
+                        if (so_id) {
+                            so_id.write(`Id: ${params.get('id')}\n`);
+                            res.writeHead(200, { 'Content-Type': 'text/plain' });
+                            res.end('Ok');
+                        } else {
+                            res.writeHead(500, { 'Content-Type': 'text/plain' });
+                            res.end('No TCP client connected');
+                        }
+                    });
+
+                    res.on('error', (err) => {
+                        console.error(`Error: ${err}`);
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('Server error');
+                    });
+                    break;
+            }
             break;
     }
 });
 
-const server2 = net.createServer((so) => {
+const server2 = tls.createServer(options, (so) => {
     console.log(`Client connected with: ${so.remoteAddress}:${so.remotePort}`);
     so_id = so;
 
