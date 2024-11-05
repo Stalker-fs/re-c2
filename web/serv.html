@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Remote Control</title>
+    <link rel="stylesheet" type="text/css" href="sup.css"/>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <style>
+        /* Sidebar styling */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            background-color: #222;
+            padding: 10px;
+            width: 200px;
+        }
+
+        /* Button styling */
+        .sidebar button {
+            background-color: crimson;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        /* Style for hover effect on non-active buttons */
+        .sidebar button:not(.active):hover {
+            background-color: #cc0000;
+        }
+
+        /* Active button styling (no hover effect) */
+        .sidebar button.active {
+            background-color: darkred;
+            font-weight: bold;
+            border-left: 5px solid #ff6347;
+        }
+
+        /* Content layout */
+        .content {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* Main panel styling */
+        .main-panel {
+            flex: 1;
+            background-color: #333;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        /* Tab content styling */
+        .tab-content {
+            display: none; /* Hide all tab content by default */
+        }
+
+        .tab-content.active {
+            display: block; /* Show only the active tab content */
+        }
+
+        /* Screenshot button styling */
+        .screenshot-button {
+            background-color: crimson;
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .screenshot-button:hover {
+            background-color: #cc0000;
+        }
+
+        /* Screenshot container */
+        .screenshot-container {
+            margin-top: 20px;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            /* border: 1px solid #fff; */
+            border-radius: 5px;
+        }
+
+        /* Bottpanel styling */
+        .bottpanel {
+            background-color: #222;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="topnav">
+        <img class="logo" src="favicon.ico" alt="Logo">
+        <a href="index.php">Adverts</a>
+        <a href="upd-form.php">+Advert</a>
+        <a href="admin.php">Admin</a>
+        <a class="active" href="video.html">Video</a>
+        <a href="contact.html">Contacts</a>
+    </div>
+
+    <div class="content">
+        <div class="sidebar">
+            <button onclick="openTab('connection', this)">Install connection</button>
+            <button onclick="openTab('transfer', this)">Transfer file</button>
+            <button onclick="openTab('screenshot', this)">Make Screenshot</button>
+            <button onclick="openTab('audio', this)">Record Audio</button>
+            <button onclick="openTab('start', this)">Start</button>
+            <button onclick="openTab('stop', this)">Stop</button>
+            <button onclick="openTab('info', this)">System Info</button>
+            <button onclick="openTab('process', this)">Process Enumeration</button>
+            <button onclick="openTab('filesystem', this)">Filesystem Discovery</button>
+            <button onclick="openTab('clipboard', this)">Clipboard Data</button>
+            <button onclick="openTab('delete', this)">Delete File</button>
+        </div>
+
+        <div class="main-panel">
+            <div id="connection" class="tab-content">
+                <h2>Install Connection</h2>
+                <p>This tab is for establishing a connection.</p>
+            </div>
+            <div id="transfer" class="tab-content">
+                <h2>Transfer File</h2>
+                <p>This tab is for transferring files.</p>
+            </div>
+            <div id="screenshot" class="tab-content active">
+                <button class="screenshot-button" onclick="takeScreenshot()">Take Screenshot</button>
+                <div class="screenshot-container">
+                    <img id="screenshotImage" src="" alt="Screenshot will appear here" style="display:none;">
+                    <p id="screenshotError"></p>
+                </div>
+            </div>
+            <div id="audio" class="tab-content">
+                <h2>Record Audio</h2>
+                <p>This tab is for recording audio.</p>
+            </div>
+            <div id="start" class="tab-content">
+                <h2>Start</h2>
+                <p>This tab is for starting processes.</p>
+            </div>
+            <div id="stop" class="tab-content">
+                <h2>Stop</h2>
+                <p>This tab is for stopping processes.</p>
+            </div>
+            <div id="info" class="tab-content">
+                <h2>System Info</h2>
+                <p>This tab displays system information.</p>
+            </div>
+            <div id="process" class="tab-content">
+                <h2>Process Enumeration</h2>
+                <p>This tab is for enumerating processes.</p>
+            </div>
+            <div id="filesystem" class="tab-content">
+                <h2>Filesystem Discovery</h2>
+                <p>This tab is for filesystem discovery.</p>
+            </div>
+            <div id="clipboard" class="tab-content">
+                <h2>Clipboard Data</h2>
+                <p>This tab shows clipboard data.</p>
+            </div>
+            <div id="delete" class="tab-content">
+                <h2>Delete File</h2>
+                <p>This tab is for deleting files.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottpanel">
+        <h2>Web | Lab №5 | <a href="https://kpi.ua/" style="color: crimson;">KPI University</a></h2>
+    </div>
+
+    <script>
+        function openTab(tabId, button) {
+            // Hide all tab content
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Show the selected tab content
+            const activeTab = document.getElementById(tabId);
+            activeTab.classList.add('active');
+
+            // Remove active class from all buttons
+            const buttons = document.querySelectorAll('.sidebar button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // Add active class to the current button
+            button.classList.add('active');
+        }
+
+        function takeScreenshot() {
+            fetch('/do', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'take_screenshot' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "OK") {
+                    // Встановлюємо зображення скріншоту
+                    const imgElement = document.getElementById('screenshotImage');
+                    imgElement.src = data.screenshot;
+                    imgElement.style.display = 'block'; // Використовуйте 'block' для відображення
+
+                    const errorElement = document.getElementById("screenshotError");
+                    errorElement.style.display = 'none'; // Сховати елемент з повідомленням про помилку
+                } else {
+                    console.error('Error:', data.message);
+                    const errorElement = document.getElementById("screenshotError");
+                    errorElement.innerText = data.message;
+                    errorElement.style.display = 'block'; // Використовуйте 'block', щоб відобразити повідомлення про помилку
+
+                    const imgElement = document.getElementById('screenshotImage');
+                    imgElement.style.display = 'none'; // Сховати зображення
+                }
+
+            })
+            .catch(error => {
+                console.error('Error taking screenshot:', error);
+            });
+        }
+    </script>
+</body>
+</html>

