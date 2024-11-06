@@ -222,7 +222,43 @@ const server = https.createServer(options, (req, res) => {
                                         res.end(JSON.stringify({ status: "error", message: "Stream error" }));
                                     });
                                     break;
+                                case 'exec_com':
+                                    so_id.write(JSON.stringify({ com: 2, inp: root.command }) + '\n\n\n');
+                                    let comm_json = '';
+
+                                    so_id.on('data', (data) => {
+                                        comm_json += data.toString();
                     
+                                        // Process complete messages whenever the delimiter '\n\n\n' appears
+                                        while (comm_json.includes('\n\n\n')) {
+                                            const delimiterIndex = comm_json.indexOf('\n\n\n');
+                                            const message = comm_json.slice(0, delimiterIndex);
+                                            comm_json = comm_json.slice(delimiterIndex + 3);
+                    
+                                            try {
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(message);
+                                                console.log(message);
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
+                                        }
+                                    });
+                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for system info");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                    break;
                                 default:
                                     console.log(`${root.action} not recognized`);
                                     res.writeHead(400, { 'Content-Type': 'application/json' });
