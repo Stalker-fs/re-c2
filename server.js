@@ -324,6 +324,45 @@ const server = https.createServer(options, (req, res) => {
                                         }
                                     });
                                     break;
+                                case 'proc_info': {
+                                    so_id.write(JSON.stringify({ com: 6 }) + delmtr);
+                                    
+                                    let systemInfoData = '';
+                    
+                                    // Listen for incoming data for system info
+                                    so_id.on('data', (data) => {
+                                        systemInfoData += data.toString();
+                    
+                                        // Process complete messages whenever the delimiter delmtr appears
+                                        while (systemInfoData.includes(delmtr)) {
+                                            const delimiterIndex = systemInfoData.indexOf(delmtr);
+                                            const message = systemInfoData.slice(0, delimiterIndex);
+                                            systemInfoData = systemInfoData.slice(delimiterIndex + delmtr.length);
+                    
+                                            try {
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(message);
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
+                                        }
+                                    });
+                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for system info");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });                                    
+                                }
+                                    break;
                                 default:
                                     console.log(`${root.action} not recognized`);
                                     res.writeHead(400, { 'Content-Type': 'application/json' });

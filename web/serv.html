@@ -174,7 +174,7 @@
         .terminal input[type="text"]:focus {
             outline: none;
         }
-        #fileExplorer {
+        #fileExplorer, #processExplorer {
             border: 1px solid #ccc;
             padding: 10px;
             /* max-width: 1000px; */
@@ -235,7 +235,7 @@
             <button id="sysinfoButton" onclick="openTab('sysinfo', this)">System Information</button>
             <button onclick="openTab('fileExplorer', this)">File Explorer</button>
             <button onclick="openTab('screenshot', this)">Make Screenshot</button>
-            <button onclick="openTab('audio', this)">Record Audio</button>
+            <button onclick="openTab('processExplorer', this)">Process Explorer</button>
             <button onclick="openTab('cmd', this)">Command line</button>
             <button onclick="openTab('stop', this)">Stop</button>
             <button onclick="openTab('info', this)">System Info</button>
@@ -256,7 +256,6 @@
                 <div id="path">Current Path: /</div>
                 <div id="content"></div>
                 <button class="screenshot-button" onclick="goBack()">Go Back</button>
-                <input type="file" id="fileUpload" style="display:none;" onchange="uploadFile(this.files[0])">
             </div>
             <div id="screenshot" class="tab-content">
                 <button class="screenshot-button" onclick="takeScreenshot()">Take Screenshot</button>
@@ -265,9 +264,13 @@
                     <p id="screenshotError"></p>
                 </div>
             </div>
-            <div id="audio" class="tab-content">
-                <h2>Record Audio</h2>
-                <p>This tab is for recording audio.</p>
+            <div id="processExplorer" class="tab-content">
+                <div class="item" id="path">
+                    <span class="name">Name</span>
+                    <span class="size">User</span>
+                    <span class="created">Pid</span>
+                </div>
+                <div id="proc_content"></div>
             </div>
             <div id="cmd" class="tab-content">
                 <div class="terminal">
@@ -338,6 +341,9 @@
                     break;
                 case 'screenshot':
                     takeScreenshot();
+                    break;
+                case 'processExplorer': 
+                    fetchProcessContents();
                     break;
             }
         }
@@ -507,32 +513,32 @@
         }
 
         function displayContents(data) {
-        const contentDiv = document.getElementById('content');
-        contentDiv.innerHTML = '';
-        document.getElementById('path').innerText = `Current Path: ${currentPath}`;
+            const contentDiv = document.getElementById('content');
+            contentDiv.innerHTML = '';
+            document.getElementById('path').innerText = `Current Path: ${currentPath}`;
 
-        data.dirs.forEach(dir => {
-            const dirDiv = document.createElement('div');
-            dirDiv.className = 'item directory';
-            dirDiv.innerText = dir.name;
-            dirDiv.onclick = () => openDirectory(dir.name);
-            contentDiv.appendChild(dirDiv);
-        });
+            data.dirs.forEach(dir => {
+                const dirDiv = document.createElement('div');
+                dirDiv.className = 'item directory';
+                dirDiv.innerText = dir.name;
+                dirDiv.onclick = () => openDirectory(dir.name);
+                contentDiv.appendChild(dirDiv);
+            });
 
-        data.files.forEach(file => {
-            const fileDiv = document.createElement('div');
-            fileDiv.className = 'item file';
-            fileDiv.innerHTML = `
-            <span class="name">${file.name}</span>
-            <span class="size">${formatFileSize(file.size)}</span>
-            <span class="created">${file.create_date}</span>
-                <span>
-                    <button class="screenshot-button" onclick="downloadFile('${file.name}')">📥</button>
-                    <button class="screenshot-button" onclick="deleteFile('${file.name}')">🗑️</button>
-                </span>`;
-            contentDiv.appendChild(fileDiv);
-        });
-    }
+            data.files.forEach(file => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'item file';
+                fileDiv.innerHTML = `
+                <span class="name">${file.name}</span>
+                <span class="size">${formatFileSize(file.size)}</span>
+                <span class="created">${file.create_date}</span>
+                    <span>
+                        <button class="screenshot-button" onclick="downloadFile('${file.name}')">📥</button>
+                        <button class="screenshot-button" onclick="deleteFile('${file.name}')">🗑️</button>
+                    </span>`;
+                contentDiv.appendChild(fileDiv);
+            });
+        }
 
     function formatFileSize(bytes) {
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -600,6 +606,44 @@
 
         }
 
+        async function fetchProcessContents() {
+            try {
+                const response = await fetch('/do', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'proc_info'})
+                });
+                const data = await response.json();
+                displayProcess(data);
+            } catch (error) {
+                console.error('Error fetching folder contents:', error);
+            }
+        }
+
+        function displayProcess(data) {
+            const contentDiv = document.getElementById('proc_content');
+            contentDiv.innerHTML = '';
+
+            // const fileDiv = document.createElement('div');
+            // fileDiv.className = 'item file';
+            // fileDiv.innerHTML = `
+            // <span class="name">Name</span>
+            // <span class="size">User</span>
+            // <span class="created">Pid</span>
+            // `
+            // contentDiv.appendChild(fileDiv);
+
+            data.proc.forEach(proc => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'item file';
+                fileDiv.innerHTML = `
+                <span class="name">${proc.proc_name}</span>
+                <span class="size">${proc.user}</span>
+                <span class="created">${proc.pid}</span>
+                `
+                contentDiv.appendChild(fileDiv);
+            });
+        }
         // Initialize by loading root directory
         //fetchFolderContents(currentPath);
     </script>
