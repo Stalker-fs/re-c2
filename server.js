@@ -206,8 +206,10 @@ const server = https.createServer(options, (req, res) => {
                                             systemInfoData = systemInfoData.slice(delimiterIndex + delmtr.length);
                     
                                             try {
+                                                const sysinfodata = JSON.parse(message);
+                                                sysinfodata.status = "OK";
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                                                res.end(message);
+                                                res.end(JSON.stringify(sysinfodata));
                                             } catch (error) {
                                                 console.error('Error parsing JSON:', error);
                                                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -242,9 +244,10 @@ const server = https.createServer(options, (req, res) => {
                                             comm_json = comm_json.slice(delimiterIndex + delmtr.length);
                     
                                             try {
+                                                const parsedData = JSON.parse(message);
+                                                parsedData.status = "OK";
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                                                res.end(message);
-                                                console.log(message);
+                                                res.end(JSON.stringify(parsedData));
                                             } catch (error) {
                                                 console.error('Error parsing JSON:', error);
                                                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -274,9 +277,17 @@ const server = https.createServer(options, (req, res) => {
                                             const pos = cli_dir.indexOf(delmtr);
                                             const mess_dir = cli_dir.slice(0, pos);
                                             cli_dir = cli_dir.slice(pos +3);
-                                            res.writeHead(200, { 'Content-Type': 'application/json' });
-                                            res.end(mess_dir);
-                                            console.log(mess_dir);
+                                            try {
+                                                const dir_data = JSON.parse(mess_dir);
+                                                dir_data.status = "OK"
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify(dir_data));                                            
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
+
                                         }
                                     })
                                     break;
@@ -340,8 +351,10 @@ const server = https.createServer(options, (req, res) => {
                                             systemInfoData = systemInfoData.slice(delimiterIndex + delmtr.length);
                     
                                             try {
+                                                const proc_data = JSON.parse(message);
+                                                proc_data.status = "OK";
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                                                res.end(message);
+                                                res.end(JSON.stringify(proc_data));
                                             } catch (error) {
                                                 console.error('Error parsing JSON:', error);
                                                 res.writeHead(500, { 'Content-Type': 'application/json' });

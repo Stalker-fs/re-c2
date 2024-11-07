@@ -120,8 +120,7 @@
             font-size: 24px;
             margin-right: 10px;
             padding-bottom: 10px;
-
-            color: crimson; /* Color for icons */
+            font-style: normal;
         }
 
         .info-title {
@@ -359,32 +358,45 @@
             })
             .then(response => response.json())
             .then(data => {
-                const systemInfoContainer = document.getElementById('systemInfoContainer');
-                systemInfoContainer.innerHTML = ''; // Clear existing info
+                if (data.status === "OK") {
+                    const systemInfoContainer = document.getElementById('systemInfoContainer');
+                    systemInfoContainer.innerHTML = ''; // Clear existing info
 
-                // Populate the system info
-                const infoItems = [
-                    { title: 'OS Name', value: data.systemName, icon: '💻' },
-                    { title: 'Username', value: data.username, icon: '👤' },
-                    { title: 'Processor', value: data.processor, icon: '🧠' },
-                    { title: 'System Architecture', value: data.architecture, icon: '🔧' },
-                    { title: 'Graphics Processor', value: data.gpu, icon: '🎮' },
-                    { title: 'RAM Size', value: data.ram, icon: '🧮' },
-                    { title: 'Disk Size / Free Space', value: `${data.diskSize} / ${data.freeSpace}`, icon: '💾' },
-                    { title: 'Screen Size', value: data.screenSize, icon: '📺' },
-                    { title: 'Device Type', value: data.deviceType, icon: '📱' },
-                    { title: 'Hostname', value: data.hostname, icon: '🏷️' },
-                    { title: 'Local IP Address', value: data.localIp, icon: '🌐' },
-                    { title: 'System Language', value: data.language, icon: '🈯' },
+                    // Populate the system info
+                    const infoItems = [
+                        { title: 'OS Name', value: data.systemName, icon: '💻' },
+                        { title: 'Username', value: data.username, icon: '👤' },
+                        { title: 'Processor', value: data.processor, icon: '🧠' },
+                        { title: 'System Architecture', value: data.architecture, icon: '🔧' },
+                        { title: 'Graphics Processor', value: data.gpu, icon: '🎮' },
+                        { title: 'RAM Size', value: data.ram, icon: '🧮' },
+                        { title: 'Disk Size / Free Space', value: `${data.diskSize} / ${data.freeSpace}`, icon: '💾' },
+                        { title: 'Screen Size', value: data.screenSize, icon: '📺' },
+                        { title: 'Device Type', value: data.deviceType, icon: '📱' },
+                        { title: 'Hostname', value: data.hostname, icon: '🏷️' },
+                        { title: 'Local IP Address', value: data.localIp, icon: '🌐' },
+                        { title: 'System Language', value: data.language, icon: '🈯' },
 
-                ];
+                    ];
 
-                infoItems.forEach(item => {
-                    const infoItem = document.createElement('div');
-                    infoItem.className = 'info-item';
-                    infoItem.innerHTML = `<i>${item.icon}</i><span class="info-title">${item.title}:</span>&nbsp;${item.value}`;
-                    systemInfoContainer.appendChild(infoItem);
-                });
+                    infoItems.forEach(item => {
+                        const infoItem = document.createElement('div');
+                        infoItem.className = 'info-item';
+                        infoItem.innerHTML = `<i>${item.icon}</i><span class="info-title">${item.title}:</span>&nbsp;${item.value}`;
+                        systemInfoContainer.appendChild(infoItem);
+                    });
+                } else {
+                    const hsysinfoError = document.getElementById('sysinfoError');
+                    if (hsysinfoError) {
+                        hsysinfoError.textContent = data.message;
+                    } else {
+                        const infoItem = document.createElement('p');
+                        infoItem.id = 'sysinfoError';
+                        infoItem.style.display = 'block';
+                        infoItem.textContent = data.message;
+                        systemInfoContainer.appendChild(infoItem);                        
+                    }
+                }
             })
             .catch(error => {
                 console.error('Error fetching system info:', error);
@@ -464,8 +476,14 @@
                     .then(response => response.json())
                     .then(data => {
                         const responseLine = document.createElement('div');
-                        responseLine.textContent = data.output;
-                        output.appendChild(responseLine);                
+
+                        if (data.status === "OK") {
+                            responseLine.textContent = data.output;
+                        } else {
+                            responseLine.textContent = `Server response: ${data.message}`;
+                        }
+                        output.appendChild(responseLine);                             
+                        
                     });
                 }
 
@@ -515,29 +533,43 @@
         function displayContents(data) {
             const contentDiv = document.getElementById('content');
             contentDiv.innerHTML = '';
-            document.getElementById('path').innerText = `Current Path: ${currentPath}`;
+            if (data.status === "OK") {
+                document.getElementById('path').innerText = `Current Path: ${currentPath}`;
 
-            data.dirs.forEach(dir => {
-                const dirDiv = document.createElement('div');
-                dirDiv.className = 'item directory';
-                dirDiv.innerText = dir.name;
-                dirDiv.onclick = () => openDirectory(dir.name);
-                contentDiv.appendChild(dirDiv);
-            });
+                data.dirs.forEach(dir => {
+                    const dirDiv = document.createElement('div');
+                    dirDiv.className = 'item directory';
+                    dirDiv.innerText = dir.name;
+                    dirDiv.onclick = () => openDirectory(dir.name);
+                    contentDiv.appendChild(dirDiv);
+                });
 
-            data.files.forEach(file => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'item file';
-                fileDiv.innerHTML = `
-                <span class="name">${file.name}</span>
-                <span class="size">${formatFileSize(file.size)}</span>
-                <span class="created">${file.create_date}</span>
-                    <span>
-                        <button class="screenshot-button" onclick="downloadFile('${file.name}')">📥</button>
-                        <button class="screenshot-button" onclick="deleteFile('${file.name}')">🗑️</button>
-                    </span>`;
-                contentDiv.appendChild(fileDiv);
-            });
+                data.files.forEach(file => {
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'item file';
+                    fileDiv.innerHTML = `
+                    <span class="name">${file.name}</span>
+                    <span class="size">${formatFileSize(file.size)}</span>
+                    <span class="created">${file.create_date}</span>
+                        <span>
+                            <button class="screenshot-button" onclick="downloadFile('${file.name}')">📥</button>
+                            <button class="screenshot-button" onclick="deleteFile('${file.name}')">🗑️</button>
+                        </span>`;
+                    contentDiv.appendChild(fileDiv);
+                });                
+            } else {
+                const hsysinfoError = document.getElementById('fileExplorerError');
+                    if (hsysinfoError) {
+                        hsysinfoError.textContent = data.message;
+                    } else {
+                        const infoItem = document.createElement('p');
+                        infoItem.id = 'fileExplorerError';
+                        infoItem.style.display = 'block';
+                        infoItem.textContent = data.message;
+                        contentDiv.appendChild(infoItem);                        
+                    }
+            }
+
         }
 
     function formatFileSize(bytes) {
@@ -624,25 +656,30 @@
             const contentDiv = document.getElementById('proc_content');
             contentDiv.innerHTML = '';
 
-            // const fileDiv = document.createElement('div');
-            // fileDiv.className = 'item file';
-            // fileDiv.innerHTML = `
-            // <span class="name">Name</span>
-            // <span class="size">User</span>
-            // <span class="created">Pid</span>
-            // `
-            // contentDiv.appendChild(fileDiv);
+            if (data.status === "OK") {
+                data.proc.forEach(proc => {
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'item file';
+                    fileDiv.innerHTML = `
+                    <span class="name">${proc.proc_name}</span>
+                    <span class="size">${proc.user}</span>
+                    <span class="created">${proc.pid}</span>
+                    `
+                    contentDiv.appendChild(fileDiv);
+                });                
+            } else {
+                const hsysinfoError = document.getElementById('processExplorerError');
+                    if (hsysinfoError) {
+                        hsysinfoError.textContent = data.message;
+                    } else {
+                        const infoItem = document.createElement('p');
+                        infoItem.id = 'processExplorerError';
+                        infoItem.style.display = 'block';
+                        infoItem.textContent = data.message;
+                        contentDiv.appendChild(infoItem);                        
+                    }
+            }
 
-            data.proc.forEach(proc => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'item file';
-                fileDiv.innerHTML = `
-                <span class="name">${proc.proc_name}</span>
-                <span class="size">${proc.user}</span>
-                <span class="created">${proc.pid}</span>
-                `
-                contentDiv.appendChild(fileDiv);
-            });
         }
         // Initialize by loading root directory
         //fetchFolderContents(currentPath);
