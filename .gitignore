@@ -1,1 +1,2 @@
-artifacts/
+artifacts/*
+cli_logs/*

