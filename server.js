@@ -193,48 +193,63 @@ const server = https.createServer(options, (req, res) => {
                                     });
                                     break;
                     
-                                case 'get_system_info':
-                                    so_id.write(JSON.stringify({ com: 1 }) + delmtr);
+                                    case 'get_system_info':
+                                        so_id.write(JSON.stringify({ com: 1 }) + delmtr);
                                     
-                                    let systemInfoData = '';
-                    
-                                    // Listen for incoming data for system info
-                                    so_id.on('data', (data) => {
-                                        systemInfoData += data.toString();
-                    
-                                        // Process complete messages whenever the delimiter delmtr appears
-                                        while (systemInfoData.includes(delmtr)) {
-                                            const delimiterIndex = systemInfoData.indexOf(delmtr);
-                                            const message = systemInfoData.slice(0, delimiterIndex);
-                                            systemInfoData = systemInfoData.slice(delimiterIndex + delmtr.length);
-                    
-                                            try {
-                                                const sysinfodata = JSON.parse(message);
-                                                sysinfodata.status = "OK";
-                                                res.writeHead(200, { 'Content-Type': 'application/json' });
-                                                res.end(JSON.stringify(sysinfodata));
-                                            } catch (error) {
-                                                console.error('Error parsing JSON:', error);
-                                                res.writeHead(500, { 'Content-Type': 'application/json' });
-                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                        let systemInfoData = '';
+                                    
+                                        // Listen for incoming data for system info
+                                        so_id.on('data', (data) => {
+                                            systemInfoData += data.toString();
+                                    
+                                            // Process complete messages whenever the delimiter delmtr appears
+                                            while (systemInfoData.includes(delmtr)) {
+                                                const delimiterIndex = systemInfoData.indexOf(delmtr);
+                                                const message = systemInfoData.slice(0, delimiterIndex);
+                                                systemInfoData = systemInfoData.slice(delimiterIndex + delmtr.length);
+                                    
+                                                try {
+                                                    const sysinfodata = JSON.parse(message);
+                                                    sysinfodata.status = "OK";
+                                                    
+                                                    if (!res.writableEnded) {
+                                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                        res.end(JSON.stringify(sysinfodata));
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error parsing JSON:', error);
+                                    
+                                                    if (!res.writableEnded) {
+                                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                        res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                                    }
+                                                }
                                             }
-                                        }
-                                    });
-                    
-                                    // Handle connection end
-                                    so_id.on('end', () => {
-                                        console.log("Connection ended for system info");
-                                    });
-                    
-                                    // Handle socket errors
-                                    so_id.on('error', (err) => {
-                                        console.error('Stream error:', err);
-                                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
-                                    });
-                                    break;
+                                        });
+                                    
+                                        // Handle connection end
+                                        so_id.on('end', () => {
+                                            console.log("Connection ended for system info");
+                                    
+                                            if (!res.writableEnded) {
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Connection ended unexpectedly" }));
+                                            }
+                                        });
+                                    
+                                        // Handle socket errors
+                                        so_id.on('error', (err) => {
+                                            console.error('Stream error:', err);
+                                    
+                                            if (!res.writableEnded) {
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                            }
+                                        });
+                                        break;
+                                    
                                 case 'exec_com':
-					console.log(root.command);
+					                console.log(root.command);
                                     so_id.write(JSON.stringify({ com: 2, inp: root.command }) + delmtr);
                                     let comm_json = '';
 
@@ -250,7 +265,7 @@ const server = https.createServer(options, (req, res) => {
                                             try {
                                                 const parsedData = JSON.parse(message);
                                                 parsedData.status = "OK";
-						console.log(message);
+						                        console.log(message);
                                                 res.writeHead(200, { 'Content-Type': 'application/json' });
                                                 res.end(JSON.stringify(parsedData));
                                             } catch (error) {
@@ -294,7 +309,19 @@ const server = https.createServer(options, (req, res) => {
                                             }
 
                                         }
-                                    })
+                                    });
+
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for dir list");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
                                     break;
                                 case 'save_file':
                                     so_id.write(JSON.stringify({com: 4, path: root.path}) + delmtr);
@@ -317,6 +344,18 @@ const server = https.createServer(options, (req, res) => {
                                         }
 
                                     });
+                                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for save file");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
                                     writeStream.on('finish', () => {
                                         console.log('File write complete');
                                         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -338,6 +377,17 @@ const server = https.createServer(options, (req, res) => {
                                                 res.end(message);
                                             }
                                         }
+                                    });
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for delete file");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
                                     });
                                     break;
                                 case 'proc_info': {
@@ -402,18 +452,30 @@ const server2 = tls.createServer(options, (so) => {
     console.log(`Client connected with: ${so.remoteAddress}:${so.remotePort}`);
     so_id = so;
 
+    // Обробка отриманих даних
     so.on('data', (data) => {
-        // console.log(`Resv data: ${data}`);
-        // so.write(`Send: ${integ}\n`);
+        // Тут можна працювати з отриманими даними, якщо потрібно
+        // console.log(`Received data: ${data}`);
     });
 
+    // Обробка події відключення клієнта
     so.on('end', () => {
-        console.log('Client disconect');
+        console.log('Client disconnected');
     });
 
+    // Обробка помилок для кожного підключення
     so.on('error', (err) => {
-        console.error(`Error: ${err}`);
+        if (err.code === 'ECONNRESET') {
+            console.warn(`Connection reset by peer: ${so.remoteAddress}:${so.remotePort}`);
+        } else {
+            console.error(`Socket error: ${err}`);
+        }
     });
+});
+
+// Додайте обробку помилок для сервера
+server2.on('error', (err) => {
+    console.error(`Server error: ${err}`);
 });
 
 const server3 = tls.createServer(options, (so) => {
@@ -440,6 +502,10 @@ const server3 = tls.createServer(options, (so) => {
     so.on('error', (err) => {
         console.error(`Error: ${err}`);
     });
+});
+
+server3.on('error', (err) => {
+    console.error(`Server error: ${err}`);
 });
 
 // Запуск сервера
