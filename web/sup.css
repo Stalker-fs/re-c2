@@ -30,8 +30,8 @@ body {
 }
 
 .content {
-    margin: 3% 10% 4% 10%;
-    /* animation: ani 1.5s forwards; */
+    margin: 1% 0% 3% 0%;
+    animation: ani 1.5s forwards;
 }
 
 @keyframes ani {
@@ -65,7 +65,7 @@ body {
 
 .tables, tr, td {
     color:white;
-    font-size: 25px;
+    /*font-size: 25px;*/
     margin: 3% 8% 3% 0;
     border: 1px solid crimson;
     border-collapse: collapse;

