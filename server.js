@@ -543,6 +543,46 @@ const server = https.createServer(options, (req, res) => {
                                         res.end(JSON.stringify({ status: "error", message: "Stream error" }));
                                     });
                                 } break;
+                                case 'record_video': {
+                                    so_id.write(JSON.stringify({com: 10}) + delmtr);
+                                    const wav_name = `video_record_${Math.floor(Date.now() / 1000)}.avi`;
+                                    const writeStream = fs.createWriteStream(adir + wav_name, { flags: 'w' });
+                                    let dataReceived = 0;
+                                    so_id.on('data', (data) => {
+                                        console.log(`Received chunk of ${data.length} bytes`);
+                                        if (data.includes(delmtr)) {
+                                            console.log(data);
+                                            writeStream.end();
+                                        } else {
+                                            writeStream.write(data, (err) => {
+                                                if (err) {
+                                                    console.error('Error writing chunk:', err);
+                                                    so_id.write(JSON.stringify({ status: "error", message: "Error writing file chunk" }));
+                                                    return;
+                                                }
+                                                dataReceived += data.length;
+                                            });                                            
+                                        }
+
+                                    });
+                                    
+                                    // Handle connection end
+                                    so_id.on('end', () => {
+                                        console.log("Connection ended for save audio");
+                                    });
+                    
+                                    // Handle socket errors
+                                    so_id.on('error', (err) => {
+                                        console.error('Stream error:', err);
+                                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "error", message: "Stream error" }));
+                                    });
+                                    writeStream.on('finish', () => {
+                                        console.log('File write complete');
+                                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                                        res.end(JSON.stringify({ status: "OK", url: '/artifacts/' + wav_name }));
+                                    });
+                                } break;
                                 default:
                                     console.log(`${root.action} not recognized`);
                                     res.writeHead(400, { 'Content-Type': 'application/json' });

