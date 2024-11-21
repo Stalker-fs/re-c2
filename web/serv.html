@@ -230,12 +230,13 @@
 }
 
 table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px; text-align: left; cursor: pointer; }
+        th, td { padding: 8px; cursor: pointer; }
         th { background-color: crimson; }
 		        td:nth-child(2) { /* Застосовується до стовпця Текст */
             max-width: 300px; /* Встановлення максимальної ширини для стовпця Текст */
             word-break: break-word; /* Розрив слів при досягненні межі */
             overflow-wrap: break-word; /* Перенесення тексту */
+            white-space: pre-wrap;
         }
 		        /* Мінімальна ширина для інших стовпців */
         th:not(:nth-child(2)), td:not(:nth-child(2)) {

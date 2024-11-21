@@ -639,6 +639,7 @@ const server3 = tls.createServer(options, (so) => {
         const delimiterIndex = data.indexOf(delmtr);
         const cli_js = data.slice(0, delimiterIndex);
         // data = data.slice(delimiterIndex + delmtr.length);
+        console.log(cli_js);
         const cli = JSON.parse(cli_js);
         console.log(`Window name: ${cli.wname}\nProgram: ${cli.ppath}\nTime: ${cli.time}\nText: ${cli.text}\n`);
         fs.appendFile(clipboard_log, `${cli_js}\n`, (err) => {
