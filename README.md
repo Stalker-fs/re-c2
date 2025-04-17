@@ -31,6 +31,11 @@ This project focuses on simulating various techniques based on the [MITRE ATT&CK
 - Follows [Vault7 Development Tradecraft DOs and DON'Ts](https://wikileaks.org/ciav7p1/cms/page_14587109.htmlhttps://wikileaks.org/ciav7p1/cms/page_14587109.html)  
 - Includes anti-emulation and anti-virtualization techniques
 
+## Clients
+
+- [Windows](https://github.com/Stalker-fs/re-c2lient)
+- Linux
+
 ## Screenshots
 
 ### System Information
